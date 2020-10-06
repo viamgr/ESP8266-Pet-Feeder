@@ -11,6 +11,7 @@ class MotorControl {
     unsigned long duration = 0;
     Servo myservo;  // create servo object to control a servo
     bool rotating = false;
+    bool allowRotate = false;
 
     void init();
     void rotate();
@@ -20,8 +21,9 @@ class MotorControl {
   public:
     MotorControl(byte pin);
     void start(unsigned long duration);
-    void loop();
+    bool loop();
     void stop();
+    bool isRotating();
 
 };
 #endif

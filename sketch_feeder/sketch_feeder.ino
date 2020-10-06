@@ -40,12 +40,11 @@ AudioFileSourceID3 *id3;
 #define LED_PIN D1
 #define BOTTON_PIN D2
 #define MOTOR_PIN D5
-#define SPEAKER_PIN D6
 
 MotorControl motor(MOTOR_PIN);
 bool startMotorAfterEat = false;
-unsigned long feedTime = 15000;
-unsigned long intervalTime = 600000;
+unsigned long feedTime = 3000;
+unsigned long intervalTime = 3600000;
 unsigned long lastFeed = millis();
 void setup() {
   // Serial port for debugging purposes
@@ -63,23 +62,29 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(BOTTON_PIN, INPUT);
 
-  pinMode(SPEAKER_PIN, OUTPUT);
-
   enableServer();
 }
 
 
 int lastButtonState = 0;         // variable for reading the pushbutton status
-
+bool ledState = false;
 void loop() {
 
   if (mp3 && mp3->isRunning()) {
     if (!mp3->loop()) {
+      digitalWrite(LED_PIN, LOW);
+      ledState = false;
       mp3->stop();
-      Serial.println("SPEAKER_PIN STOPPED");
     }
-  } else {
-    digitalWrite(SPEAKER_PIN, LOW);
+    else {
+      if(ledState==false)
+      {
+        digitalWrite(LED_PIN, HIGH);
+        ledState = true;
+      }
+    }
+  }
+  else {
 
     int buttonState = digitalRead(BOTTON_PIN);
     if (buttonState != lastButtonState) {
@@ -90,21 +95,33 @@ void loop() {
     showConnectedDevices();
     if (millis() - lastFeed > intervalTime) {
       lastFeed = millis();
-
       playEat();
     }
     else {
       if (startMotorAfterEat) {
         startMotorAfterEat = false;
-
         Serial.println("startMotorAfterEat");
         motor.start(feedTime);
-
-        digitalWrite(LED_PIN, LOW);
-
       }
     }
-    motor.loop();
+
+
+    if (motor.isRotating()) {
+      if (!motor.loop()) {
+        digitalWrite(LED_PIN, LOW);
+        ledState = false;
+        motor.stop();
+      }
+      else{
+       if(ledState==false)
+        {
+          digitalWrite(LED_PIN, HIGH);
+          ledState = true;
+        }
+      }
+
+    }
+
     delay(50);
   }
 
@@ -199,17 +216,10 @@ void playWelcome() {
   out = new AudioOutputI2SNoDAC();
   mp3 = new AudioGeneratorMP3();
   mp3->begin(id3, out);
-  digitalWrite(SPEAKER_PIN, HIGH);
 
-}
-
-void eatLed() {
-  digitalWrite(LED_PIN, HIGH);
 }
 
 void playEat() {
-
-  eatLed();
 
   print("playEat");
   startMotorAfterEat = true;
@@ -223,7 +233,6 @@ void playEat() {
   out = new AudioOutputI2SNoDAC();
   mp3 = new AudioGeneratorMP3();
   mp3->begin(id3, out);
-  digitalWrite(SPEAKER_PIN, HIGH);
 }
 
 void print(String message) {
