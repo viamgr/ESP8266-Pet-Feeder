@@ -37,7 +37,7 @@ AudioFileSourceSPIFFS *file;
 AudioOutputI2SNoDAC *out;
 AudioFileSourceID3 *id3;
 
-#define LED_PIN D1
+#define LED_PIN D6
 #define BOTTON_PIN D2
 #define MOTOR_PIN D5
 
@@ -77,7 +77,7 @@ void loop() {
       mp3->stop();
     }
     else {
-      if(ledState==false)
+      if (ledState == false)
       {
         digitalWrite(LED_PIN, HIGH);
         ledState = true;
@@ -85,25 +85,25 @@ void loop() {
     }
   }
   else {
-
+    showConnectedDevices  ();
     int buttonState = digitalRead(BOTTON_PIN);
-    if (buttonState != lastButtonState) {
-      buttonPressed();
-    }
-    lastButtonState = buttonState;
+    Serial.println(lastButtonState);
 
-    showConnectedDevices();
-    if (millis() - lastFeed > intervalTime) {
+    if (buttonState != lastButtonState && buttonState == HIGH) {
+      buttonPressed();  
+    }
+    else if (millis() - lastFeed > intervalTime) {
       lastFeed = millis();
       playEat();
     }
-    else {
-      if (startMotorAfterEat) {
+    else if(startMotorAfterEat) {
+      
         startMotorAfterEat = false;
         Serial.println("startMotorAfterEat");
         motor.start(feedTime);
-      }
+     
     }
+      lastButtonState = buttonState;
 
 
     if (motor.isRotating()) {
@@ -112,8 +112,8 @@ void loop() {
         ledState = false;
         motor.stop();
       }
-      else{
-       if(ledState==false)
+      else {
+        if (ledState == false)
         {
           digitalWrite(LED_PIN, HIGH);
           ledState = true;
