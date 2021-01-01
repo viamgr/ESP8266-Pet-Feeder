@@ -11,15 +11,21 @@
 #define ledStateAlwaysOn 1
 #define ledStateFeedingOn 2
 #define defaultLedState ledStateFeedingOn
+#define MAX_ALARM_SIZE 24
+#define SCHEDULING_MODE_INTERVAL 0
+#define SCHEDULING_MODE_ALARM 1
+#define DEFAULT_SCHEDULING_MODE 0
 
 struct Config {
   float soundVolume;
   int feedingInterval;
   int feedingDuration;
+  int ledTurnOffDelay;
   int ledState;
   char wifiSsid[32];
   char wifiPassword[64];
-  int alarms[10];
+  int alarms[MAX_ALARM_SIZE];
+  int schedulingMode;
 };
 
 class Preferences
@@ -28,6 +34,8 @@ class Preferences
     Config *config = new Config();
 
     Preferences() {
+      Serial.begin(115200);
+
       loadConfiguration(filename, *config);
     }
 
@@ -78,10 +86,12 @@ class Preferences
       config.soundVolume = doc["soundVolume"] | defaultSoundVolume;
       strlcpy(config.wifiSsid, doc["wifiSsid"], sizeof(config.wifiSsid));
       strlcpy(config.wifiPassword, doc["wifiPassword"], sizeof(config.wifiPassword));
+      Serial.println((String)"aaa:" + doc["alarms"].size() );
 
-      config.alarms[0] = doc["alarms"][0] | 28800; // 08:00
-      config.alarms[1] = doc["alarms"][1] | 50400; // 14:00
-      config.alarms[2] = doc["alarms"][2] | 79200; // 22:00
+      for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
+        config.alarms[x] = doc["alarms"].size() > x ? doc["alarms"][x] : -1;
+      }
+      config.schedulingMode = doc["schedulingMode"] | DEFAULT_SCHEDULING_MODE;
 
       // Close the file (Curiously, File's destructor doesn't close the file)
       file.close();
@@ -105,15 +115,21 @@ class Preferences
       // Set the values in the document
       doc["feedingInterval"] = config.feedingInterval;
       doc["feedingDuration"] = config.feedingDuration;
+      doc["ledTurnOffDelay"] = config.ledTurnOffDelay;
       doc["ledState"] = config.ledState;
       doc["soundVolume"] = config.soundVolume;
 
       doc["wifiSsid"] = config.wifiSsid;
       doc["wifiPassword"] = config.wifiPassword;
+//
+//      doc["alarms"][0] = config.alarms[0];
+//      doc["alarms"][1] = config.alarms[1];
+//      doc["alarms"][2] = config.alarms[2];
 
-      doc["alarms"][0] = config.alarms[0];
-      doc["alarms"][1] = config.alarms[1];
-      doc["alarms"][2] = config.alarms[2];
+      for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
+        doc["alarms"][x] = config.alarms[x];
+      }
+
 
       // Serialize JSON to file
       if (serializeJson(doc, file) == 0) {
