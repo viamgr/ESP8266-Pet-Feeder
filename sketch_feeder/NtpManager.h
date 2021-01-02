@@ -12,7 +12,7 @@ class NtpManager {
     OnTimeUpdateListener onTimeUpdateListener = NULL;
     WiFiUDP udp;
     NTPClient *timeClient = new NTPClient(udp, "pool.ntp.org");
-    const int interval = 10 * 1000;
+    const int interval =60 *60 * 1000;
     void update() {
       timeClient->update();
       if(onTimeUpdateListener!=NULL)
@@ -20,7 +20,7 @@ class NtpManager {
     }
 
   public:
-    NtpManager(int offset) {
+    NtpManager() {
       //timeClient->setTimeOffset(offset);
     }
     void start() {

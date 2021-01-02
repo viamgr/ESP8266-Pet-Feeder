@@ -23,7 +23,7 @@ LedControl led(LED_PIN, ledStateFeedingOn);
 MotorControl motor(MOTOR_PIN);
 AudioControl audioControl;
 WifiManager wifiManager;
-NtpManager ntpManager(12600);
+NtpManager ntpManager;
 ServerControl serverControl(AUDIO_FEEDING);
 const char* ssid = "Feeder-Access-Point";
 int alarms[MAX_ALARM_SIZE];
@@ -107,8 +107,19 @@ void onSetWifiSetting(String ssid,String password) {
 }
 
 void onSetFeedingAlarm(int *alarms) {
+  stopFeedingInterval();
   saveFeedingAlarm(alarms);
   onFeedingAlarm();
+}
+void stopFeedingInterval(){
+   Tasks.erase(FEEDING_INTERVAL_TASK);
+}
+void stopFeedingAlarm(){
+  for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
+    if (alarms[x] != -1) {
+      Alarm.free(alarms[x]);
+    }
+  }
 }
 void saveFeedingAlarm(int *alarms) {
   config.schedulingMode = SCHEDULING_MODE_ALARM;
@@ -119,6 +130,7 @@ void saveFeedingAlarm(int *alarms) {
 }
 
 void onSetFeedingInterval(int feedingInterval) {
+  stopFeedingAlarm();
   saveFeedingInterval(feedingInterval);
   onFeedingInterval();
 }
@@ -154,23 +166,15 @@ void onSetSoundVolume(float value) {
 }
 
 void onFeedingInterval() {
-  stopAllTasks();
-
+  stopFeedingInterval();
   Tasks.interval(FEEDING_INTERVAL_TASK, config.feedingInterval, [] {
-    Serial.print("interval forever task: now = ");
-    Serial.println(millis());
     onCompositeFeeding();
   });
 
 }
 
 void onFeedingAlarm() {
-
-  for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
-    if (alarms[x] != -1) {
-      Alarm.free(alarms[x]);
-    }
-  }
+  stopFeedingAlarm();
 
   for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
     int time = config.alarms[x];
