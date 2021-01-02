@@ -11,7 +11,7 @@
 #define ledStateAlwaysOn 1
 #define ledStateFeedingOn 2
 #define defaultLedState ledStateFeedingOn
-#define MAX_ALARM_SIZE 24
+#define MAX_ALARM_SIZE 3
 #define SCHEDULING_MODE_INTERVAL 0
 #define SCHEDULING_MODE_ALARM 1
 #define DEFAULT_SCHEDULING_MODE 0

@@ -4,6 +4,8 @@
 #include "MotorControl.h"
 #include "AudioControl.h"
 #include "ServerControl.h"
+#include "WifiManager.h"
+#include "NtpManager.h"
 #include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
 #include <TaskManager.h>
@@ -20,6 +22,8 @@
 LedControl led(LED_PIN, ledStateFeedingOn);
 MotorControl motor(MOTOR_PIN);
 AudioControl audioControl;
+WifiManager wifiManager;
+NtpManager ntpManager(12600);
 ServerControl serverControl(AUDIO_FEEDING);
 const char* ssid = "Feeder-Access-Point";
 int alarms[MAX_ALARM_SIZE];
@@ -34,7 +38,21 @@ void setup()
 
   setupTime();
   WiFi.softAP(ssid);
+  ntpManager.setOnTimeUpdateListener([=](unsigned long epochTime) {
+        Serial.println((String)"epochTime... "+ epochTime);
 
+        setTime(epochTime);
+   });
+
+  wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
+     Serial.println();
+     Serial.print("wifiState:");
+     Serial.println(wifiState);
+
+     if(wifiState==WIFI_STA_STATE_ESTABLISHED){
+        ntpManager.start();
+     }
+  });
   serverControl.setEventListener([ = ](JsonObject & keyValue) {
 
     String key = keyValue["key"];
@@ -65,6 +83,10 @@ void setup()
       onSetFeedDuration(value);
     else if (key == "SETTING_LED_TURN_OFF_DELAY")
       onSetLedTurnOffDelay(value);
+    else if (key == "SETTING_WIFI_SETTINGS") {
+      JsonObject obj = ((JsonObject) value);
+      onSetWifiSetting(obj["ssid"],obj["password"]);
+    }
 
   });
 
@@ -77,6 +99,11 @@ void setup()
   });
 
 
+}
+
+void onSetWifiSetting(String ssid,String password) {
+    stopAllTasks();
+    wifiManager.connectToWifi(ssid,password);
 }
 
 void onSetFeedingAlarm(int *alarms) {
@@ -195,6 +222,6 @@ void loop()
 {
   Tasks.update(); // automatically execute tasks
   Alarm.delay(0); // wait one second between clock display
-//  Serial.print("1");
+  //  Serial.print("1");
 
 }

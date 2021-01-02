@@ -97,6 +97,7 @@ class ServerControl {
   public:
 
     ServerControl(const char *feedingFileName) {
+      Serial.begin(115200);
       this->feedingFileName = feedingFileName;
       setup();
     }
