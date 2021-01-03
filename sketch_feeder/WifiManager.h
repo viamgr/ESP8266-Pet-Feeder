@@ -30,7 +30,7 @@ class WifiManager {
       if (wifiStatusListener != NULL) wifiStatusListener(WIFI_STA_STATE_BEGIN);
 
       Tasks.interval(WIFI_MANAGER_TASK, 500, retryCount, [ = ] {
-        Serial.println((String)"count:" + Tasks.count(WIFI_MANAGER_TASK));
+        Serial.println((String)"count:" + Tasks.count(WIFI_MANAGER_TASK)+" ssid:"+ssid+", password:"+password);
 
         if (WiFi.status() == WL_CONNECTED) {
           Serial.println("Connected... ");
@@ -40,7 +40,6 @@ class WifiManager {
         else{
           if (Tasks.count(WIFI_MANAGER_TASK) >= retryCount) {
             if (wifiStatusListener != NULL) wifiStatusListener(WIFI_STA_STATE_FAILED);
-            Serial.println("Failed connect to Wifi");
           }
           else{
             if (wifiStatusListener != NULL) wifiStatusListener(WIFI_STA_STATE_CONNECTING);

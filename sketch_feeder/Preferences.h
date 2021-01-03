@@ -123,10 +123,6 @@ class Preferences
 
       doc["wifiSsid"] = config.wifiSsid;
       doc["wifiPassword"] = config.wifiPassword;
-//
-//      doc["alarms"][0] = config.alarms[0];
-//      doc["alarms"][1] = config.alarms[1];
-//      doc["alarms"][2] = config.alarms[2];
 
       for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
         doc["alarms"][x] = config.alarms[x];
