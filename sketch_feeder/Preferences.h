@@ -10,6 +10,7 @@
 #define ledStateAlwaysOff 0
 #define ledStateAlwaysOn 1
 #define ledStateFeedingOn 2
+#define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
 #define MAX_ALARM_SIZE 3
 #define SCHEDULING_MODE_INTERVAL 0
@@ -82,6 +83,7 @@ class Preferences
       // Copy values from the JsonDocument to the Config
       config.feedingInterval = doc["feedingInterval"] | defaultFeedingInterval;
       config.feedingDuration = doc["feedingDuration"] | defaultFeedingDuration;
+      config.ledTurnOffDelay = doc["ledTurnOffDelay"] | defaultLedTurnOffDelay;
       config.ledState = doc["ledState"] | defaultLedState;
       config.soundVolume = doc["soundVolume"] | defaultSoundVolume;
       strlcpy(config.wifiSsid, doc["wifiSsid"], sizeof(config.wifiSsid));

@@ -31,19 +31,26 @@ class LedControl {
     }
 
     void on() {
-      dismiss();
       if (mode != ledStateAlwaysOff)
         digitalWrite(pin, HIGH);
     }
+    void onWithDismiss() {
+      dismiss();
+      on();
+    }
 
     void off() {
-      dismiss();
       if (mode != ledStateAlwaysOn)
         digitalWrite(pin, LOW);
     }
 
-    void onDuration(const uint32_t offDelay) {
-      on();
+    void offWithDismiss() {
+      dismiss();
+      off();
+    }
+
+    void offAfter(const int offDelay) {
+      Serial.println((String)"offDelay "+ offDelay);
       // task is executed only once after offDelay[ms]
       Tasks.once(offDelayedTask, offDelay, [&] {
         Serial.println((String)"state "+ Tasks.isStopping(offDelayedTask)+" isRunning"+Tasks.isRunning(offDelayedTask));
@@ -52,8 +59,18 @@ class LedControl {
     }
 
     void dismiss() {
+      off();
       Serial.println((String)"stopping " + offDelayedTask);
       Tasks.erase(offDelayedTask);
+    }
+
+    void toggle(){
+          Serial.println((String)"toggle " + digitalRead(pin));
+
+        if(digitalRead(pin) == LOW)
+            onWithDismiss();
+        else
+            offWithDismiss();
     }
 };
 #endif

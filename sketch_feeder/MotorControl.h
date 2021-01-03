@@ -15,7 +15,6 @@ class MotorControl {
     }
 
     void rotate(const uint32_t duration, void (*listener)()) {
-      stop();
       myservo.attach(pin);
       myservo.write(15);
       Serial.print("start MotorControl");

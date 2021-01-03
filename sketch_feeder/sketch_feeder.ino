@@ -2,6 +2,7 @@
 #include "Preferences.h"
 #include "LedControl.h"
 #include "MotorControl.h"
+#include "ClickButton.h"
 #include "AudioControl.h"
 #include "ServerControl.h"
 #include "WifiManager.h"
@@ -18,6 +19,7 @@
 #define FEEDING_INTERVAL_TASK "FEEDING_INTERVAL_TASK"
 #define LED_PIN D6
 #define MOTOR_PIN D5
+#define BUTTON_PIN D2
 
 LedControl led(LED_PIN, ledStateFeedingOn);
 MotorControl motor(MOTOR_PIN);
@@ -31,10 +33,13 @@ int alarms[MAX_ALARM_SIZE];
 Preferences preferences;
 Config& config = preferences.getConfig();
 
+ClickButton button(BUTTON_PIN);
+
 void setup()
 {
 
   Serial.begin(115200);
+  pinMode(BUTTON_PIN, INPUT);
 
   setupTime();
   WiFi.softAP(ssid);
@@ -55,38 +60,45 @@ void setup()
   });
   serverControl.setEventListener([ = ](JsonObject & keyValue) {
 
-    String key = keyValue["key"];
-    auto value = keyValue["value"];
-    Serial.println((String)"key " + key);
-    if (key == "EVENT_FEEDING")
-      onFeedingEvent(NULL);
-    else if (key == "EVENT_LED_TIMER")
-      onLedTimerEvent();
-    else if (key == "EVENT_PLAY_FEEDING_AUDIO")
-      onPlayFeedingAudioEvent(NULL);
-    else if (key == "EVENT_COMPOSITE_FEEDING")
-      onCompositeFeeding();
-    else if (key == "SETTING_FEEDING_INTERVAL")
-      onSetFeedingInterval(value);
-    else if (key == "SETTING_FEEDING_ALARM")
-    {
-      JsonArray arr = ((JsonArray) value);
-      int alarms[arr.size()];
-      for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
-        alarms[x] = arr.size() > x ? arr[x] : -1;
+    stopAllTasks();
+    delay(50);
+      String key = keyValue["key"];
+      auto value = keyValue["value"];
+
+      Serial.println((String)"key " + key);
+      if (key == "EVENT_FEEDING")
+        onFeedingEvent(NULL);
+      else if (key == "EVENT_LED_TIMER")
+        onLedTimerEvent();
+      else if (key == "EVENT_PLAY_FEEDING_AUDIO")
+        onPlayFeedingAudioEvent(NULL);
+      else if (key == "EVENT_COMPOSITE_FEEDING")
+        onCompositeFeeding();
+      else if (key == "SETTING_FEEDING_INTERVAL")
+        onSetFeedingInterval((int) value);
+      else if (key == "SETTING_FEEDING_ALARM")
+      {
+        JsonArray arr = ((JsonArray) value);
+        int alarms[arr.size()];
+        for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
+          alarms[x] = arr.size() > x ? arr[x] : -1;
+        }
+        onSetFeedingAlarm(alarms);
       }
-      onSetFeedingAlarm(alarms);
-    }
-    else if (key == "SETTING_SOUND_VOLUME")
-      onSetSoundVolume(value);
-    else if (key == "SETTING_FEED_DURATION")
-      onSetFeedDuration(value);
-    else if (key == "SETTING_LED_TURN_OFF_DELAY")
-      onSetLedTurnOffDelay(value);
-    else if (key == "SETTING_WIFI_SETTINGS") {
-      JsonObject obj = ((JsonObject) value);
-      onSetWifiSetting(obj["ssid"],obj["password"]);
-    }
+      else if (key == "SETTING_SOUND_VOLUME")
+        onSetSoundVolume(value);
+      else if (key == "SETTING_FEED_DURATION")
+        onSetFeedDuration(value);
+      else if (key == "SETTING_LED_TURN_OFF_DELAY")
+        onSetLedTurnOffDelay(value);
+      else if (key == "SETTING_WIFI_SETTINGS") {
+        JsonObject obj = ((JsonObject) value);
+        onSetWifiSetting(obj["ssid"],obj["password"]);
+      }
+
+
+
+
 
   });
 
@@ -98,9 +110,30 @@ void setup()
     onPlayFeedingAudioEvent(NULL);
   });
 
+    handleButton();
+}
+
+void handleButton(){
+
+  Tasks.framerate(1000, [=] {
+    if(button.changed==1){
+        if(button.clicks==-1){
+        onFeedingEvent(NULL);
+
+      }else if(button.clicks==-2){
+        onLedToggle();
+
+      }
+ }
+
+  });
 
 }
 
+void onLedToggle(){
+    led.toggle();
+    led.offAfter(config.ledTurnOffDelay);
+}
 void onSetWifiSetting(String ssid,String password) {
     stopAllTasks();
     wifiManager.connectToWifi(ssid,password);
@@ -130,6 +163,8 @@ void saveFeedingAlarm(int *alarms) {
 }
 
 void onSetFeedingInterval(int feedingInterval) {
+      Serial.println((String) "feedingInterval000:"+feedingInterval);
+
   stopFeedingAlarm();
   saveFeedingInterval(feedingInterval);
   onFeedingInterval();
@@ -151,6 +186,8 @@ void setupTime() {
 
 }
 void onSetLedTurnOffDelay(int value) {
+  Serial.println((String)"value "+ value);
+
   config.ledTurnOffDelay = value;
   preferences.save();
 }
@@ -167,9 +204,13 @@ void onSetSoundVolume(float value) {
 
 void onFeedingInterval() {
   stopFeedingInterval();
-  Tasks.interval(FEEDING_INTERVAL_TASK, config.feedingInterval, [] {
-    onCompositeFeeding();
-  });
+   Tasks.once(100, [ = ] {
+      Serial.println((String) "feedingInterval:"+config.feedingInterval);
+
+      Tasks.interval(FEEDING_INTERVAL_TASK, config.feedingInterval, [] {
+        onCompositeFeeding();
+      });
+   });
 
 }
 
@@ -197,18 +238,15 @@ void stopAllTasks() {
 }
 void onCompositeFeeding() {
   Serial.print((String)"onCompositeFeeding");
-
-  stopAllTasks();
   audioControl.play(AUDIO_FEEDING, config.soundVolume, [ = ]() {
     led.on();
     motor.rotate(config.feedingDuration, [ = ]() {
-      led.onDuration(config.ledTurnOffDelay);
+      led.offAfter(config.ledTurnOffDelay);
     });
   });
 
 }
 void onFeedingEvent(void (*listener)()) {
-  stopAllTasks();
   motor.rotate(config.feedingDuration, listener);
 }
 void onPlayFeedingAudioEvent(void (*listener)()) {
@@ -217,15 +255,14 @@ void onPlayFeedingAudioEvent(void (*listener)()) {
 }
 
 void onLedTimerEvent() {
-  stopAllTasks();
   Serial.println((String)"onLedTimerEvent");
-  led.onDuration(config.ledTurnOffDelay);
+   led.on();
+  led.offAfter(config.ledTurnOffDelay);
 }
 
 void loop()
 {
+ button.Update();
   Tasks.update(); // automatically execute tasks
   Alarm.delay(0); // wait one second between clock display
-  //  Serial.print("1");
-
 }
