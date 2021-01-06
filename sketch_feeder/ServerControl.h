@@ -6,6 +6,8 @@
 #include <ESPAsyncTCP.h>
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
+#include "ESP8266WiFi.h"
+#include <TimeLib.h>
 
 typedef std::function<void(JsonObject &keyValue)> GetEventFunction;
 
@@ -18,7 +20,7 @@ class ServerControl {
     GetEventFunction getEventListener = NULL;
     UploadListener uploadListener = NULL;
     StopTasksListener stopTasksListener = NULL;
-    
+
     AsyncWebServer *server = new AsyncWebServer(80);
 
     File tempUploadFile;
@@ -27,6 +29,10 @@ class ServerControl {
 
     static String processor(const String & var) {
       Serial.println(var);
+      Serial.println((String)"hour() " + hour() + " minute():" + minute() + " day():" + day() + " month():" + month() + " year():" + year());
+
+      if (var == "EPOCH")
+        return String(now());
       return String();
     }
 
@@ -34,18 +40,15 @@ class ServerControl {
       setupStaticPage();
       setupEventApi();
       setupUploadApi();
+      setupWifiApi();
+      setupConfigApi();
+
+      server->begin();
     }
 
     void setupStaticPage() {
-      // Route for root / web page
-      server->on("/", HTTP_GET, [ = ](AsyncWebServerRequest * request) {
-        request->send(SPIFFS, "/index.html", String(), false, processor);
-      });
-      // Route to load style.css file
-      server->on("/style.css", HTTP_GET, [](AsyncWebServerRequest * request) {
-        request->send(SPIFFS, "/style.css", "text/css");
-      });
-      server->begin();
+      server->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setTemplateProcessor(processor);
+
     }
 
     void setupEventApi() {
@@ -56,6 +59,46 @@ class ServerControl {
         getEventListener(jsonObj);
       });
       server->addHandler(handler);
+
+    }
+
+    void setupWifiApi() {
+
+      server->on("/wifi/list", HTTP_GET, [ = ](AsyncWebServerRequest * request) {
+        String json = "[";
+        int n = WiFi.scanComplete();
+        if (n == -2) {
+          WiFi.scanNetworks(true);
+        } else if (n) {
+          for (int i = 0; i < n; ++i) {
+            if (i) json += ",";
+            json += "{";
+            //            json += "\"rssi\":" + String(WiFi.RSSI(i));
+            json += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
+            json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
+            //json += ",\"channel\":" + String(WiFi.channel(i));
+            json += ",\"secure\":" + String(WiFi.encryptionType(i));
+            //json += ",\"hidden\":" + String(WiFi.isHidden(i) ? "true" : "false");
+            json += "}";
+          }
+          WiFi.scanDelete();
+          if (WiFi.scanComplete() == -2) {
+            WiFi.scanNetworks(true);
+          }
+        }
+        json += "]";
+        request->send(200, "application/json", json);
+        json = String();
+      });
+
+    }
+    void setupConfigApi() {
+
+      //      server->on("/configs/", HTTP_GET, [ = ](AsyncWebServerRequest * request) {
+      //        server.serveStatic("/", SPIFFS, "/www/");
+      //
+      //            request->send(SPIFFS, "/data/config.json", "application/json");
+      //      });
 
     }
     void setupUploadApi() {

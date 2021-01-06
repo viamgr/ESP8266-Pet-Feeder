@@ -11,6 +11,7 @@ class MotorControl {
     Servo myservo;
   public:
     MotorControl(byte pin) {
+      Serial.begin(115200);
       this->pin = pin;
     }
 

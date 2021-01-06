@@ -11,11 +11,10 @@
 #include <ArduinoJson.h>
 #include <TaskManager.h>
 #include <ESPAsyncWebServer.h>
-
 #include <Time.h>
 #include <TimeAlarms.h>
 
-#define AUDIO_FEEDING "/pno-cs.mp3"
+#define AUDIO_FEEDING "/upload/connected.mp3"
 #define FEEDING_INTERVAL_TASK "FEEDING_INTERVAL_TASK"
 #define LED_PIN D6
 #define MOTOR_PIN D5
@@ -34,22 +33,22 @@ Preferences preferences;
 Config& config = preferences.getConfig();
 
 ClickButton button(BUTTON_PIN);
+bool first = true;
 
 void handleButton() {
-
   Tasks.framerate(1000, [ = ] {
     if (button.changed == 1) {
-      stopAllTasks();
-      if (button.clicks == -1) {
-        onFeedingEvent(NULL);
-      } else if (button.clicks == -2) {
-        onLedToggle();
-
+      if (first == false) {
+        stopAllTasks();
+        if (button.clicks == -1) {
+          onCompositeFeeding();
+        } else if (button.clicks == -2) {
+          onLedToggle();
+        }
       }
+      first = false;
     }
-
   });
-
 }
 
 void onLedToggle() {
@@ -59,10 +58,10 @@ void onLedToggle() {
 void onSetWifiSetting(String ssid, String password) {
   saveWifiSetting(ssid, password);
   connectToWifi();
-
 }
 void connectToWifi() {
-  if (config.wifiSsid != NULL && config.wifiSsid != "")
+  Serial.println((String) "connectToWifi" + config.wifiSsid);
+  if (config.wifiSsid != NULL && config.wifiSsid[0] != '\0')
     wifiManager.connectToWifi(config.wifiSsid, config.wifiPassword);
 }
 void saveWifiSetting(String ssid, String password) {
@@ -79,6 +78,7 @@ char* string2char(String command) {
 }
 
 void onSetFeedingAlarm(int *alarms) {
+  Serial.println((String) "onSetFeedingAlarm");
   stopFeedingInterval();
   saveFeedingAlarm(alarms);
   onFeedingAlarm();
@@ -114,19 +114,9 @@ void saveFeedingInterval(int feedingInterval) {
   preferences.save();
 }
 void setupTime() {
-  setTime(0, 0, 0, 1, 1, 2022); // set time to Saturday 12:00:00am Jan 1 2022
-  memset(alarms, 0, MAX_ALARM_SIZE);
-
-  if (config.schedulingMode == SCHEDULING_MODE_INTERVAL)
-    onFeedingInterval();
-  else if (config.schedulingMode == SCHEDULING_MODE_ALARM)
-    onFeedingAlarm();
-
-
-
+  setDeviceTime(1609934861);
 }
 void onSetLedTurnOffDelay(int value) {
-  Serial.println((String)"value " + value);
   config.ledTurnOffDelay = value;
   preferences.save();
 }
@@ -147,6 +137,8 @@ void onSetSoundVolume(float value) {
 }
 
 void onFeedingInterval() {
+  Serial.println((String) "onFeedingInterval");
+
   stopFeedingInterval();
   Tasks.once(100, [ = ] {
     Serial.println((String) "feedingInterval:" + config.feedingInterval);
@@ -155,7 +147,6 @@ void onFeedingInterval() {
       onCompositeFeeding();
     });
   });
-
 }
 
 void onFeedingAlarm() {
@@ -164,11 +155,11 @@ void onFeedingAlarm() {
   for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
     int time = config.alarms[x];
     if (time != -1) {
-      float hour = (int) (time / 3600);
+      int hour = (int) (time / 3600);
       int minute = ((int)((((hour ) * 3600) + time) / 60)) % 60;
       Serial.println((String)"hour hour " + hour + " minute:" + minute + " x:" + x + " time:" + time);
 
-      Alarm.alarmRepeat((int) hour, minute, 0, onCompositeFeeding);
+      Alarm.alarmRepeat(hour, minute, 0, onCompositeFeeding);
     }
   }
 
@@ -191,9 +182,12 @@ void onCompositeFeeding() {
 
 }
 void onFeedingEvent(void (*listener)()) {
+  Serial.println((String) "onFeedingEvent");
   motor.rotate(config.feedingDuration, listener);
 }
 void onPlayFeedingAudioEvent(void (*listener)()) {
+  Serial.println((String) "onPlayFeedingAudioEventedingEvent");
+
   stopAllTasks();
   audioControl.play(AUDIO_FEEDING, config.soundVolume, listener);
 }
@@ -203,7 +197,18 @@ void onLedTimerEvent() {
   led.on();
   led.offAfter(config.ledTurnOffDelay);
 }
+void setDeviceTime(unsigned long epochTime) {
 
+  Serial.println((String)"setDeviceTime epochTime... " + epochTime);
+  setTime(epochTime);
+
+  memset(alarms, 0, MAX_ALARM_SIZE);
+  if (config.schedulingMode == SCHEDULING_MODE_INTERVAL)
+    onFeedingInterval();
+  else if (config.schedulingMode == SCHEDULING_MODE_ALARM)
+    onFeedingAlarm();
+
+}
 
 void setup()
 {
@@ -212,12 +217,9 @@ void setup()
   pinMode(BUTTON_PIN, INPUT);
 
   setupTime();
-  WiFi.softAP(ssid);
-  ntpManager.setOnTimeUpdateListener([ = ](unsigned long epochTime) {
-    Serial.println((String)"epochTime... " + epochTime);
 
-    setTime(epochTime);
-  });
+  WiFi.softAP(ssid);
+  ntpManager.setOnTimeUpdateListener(setDeviceTime);
 
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
     Serial.println();
@@ -246,6 +248,8 @@ void setup()
       onCompositeFeeding();
     else if (key == "SETTING_FEEDING_INTERVAL")
       onSetFeedingInterval((int) value);
+    else if (key == "SETTING_SET_TIME")
+      setDeviceTime((long) value);
     else if (key == "SETTING_FEEDING_ALARM")
     {
       JsonArray arr = ((JsonArray) value);

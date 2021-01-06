@@ -12,11 +12,19 @@ class NtpManager {
     OnTimeUpdateListener onTimeUpdateListener = NULL;
     WiFiUDP udp;
     NTPClient *timeClient = new NTPClient(udp, "pool.ntp.org");
-    const int interval =60 *60 * 1000;
+    const int interval = 60 * 60 * 1000;
     void update() {
-      timeClient->update();
-      if(onTimeUpdateListener!=NULL)
-        onTimeUpdateListener(timeClient->getEpochTime());
+      for (int i = 0; i < 30; i++) {
+        Serial.println("getting time");
+        bool updated = timeClient->update();
+        if (updated) {
+          if (onTimeUpdateListener != NULL)
+            onTimeUpdateListener(timeClient->getEpochTime());
+          Serial.println(timeClient->getFormattedTime());
+          break;
+        }
+        delay(60000);
+      }
     }
 
   public:

@@ -5,14 +5,14 @@
 #include <FS.h>   // Include the SPIFFS library
 #include <ArduinoJson.h>
 #define defaultFeedingInterval 18000
-#define defaultFeedingDuration 3000
+#define defaultFeedingDuration 5000
 #define defaultSoundVolume 3.99
 #define ledStateAlwaysOff 0
 #define ledStateAlwaysOn 1
 #define ledStateFeedingOn 2
 #define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
-#define MAX_ALARM_SIZE 3
+#define MAX_ALARM_SIZE 4
 #define SCHEDULING_MODE_INTERVAL 0
 #define SCHEDULING_MODE_ALARM 1
 #define DEFAULT_SCHEDULING_MODE 0
@@ -120,6 +120,7 @@ class Preferences
       doc["ledTurnOffDelay"] = config.ledTurnOffDelay;
       doc["ledState"] = config.ledState;
       doc["soundVolume"] = config.soundVolume;
+      doc["schedulingMode"] = config.schedulingMode;
 
       doc["wifiSsid"] = config.wifiSsid;
       doc["wifiPassword"] = config.wifiPassword;
