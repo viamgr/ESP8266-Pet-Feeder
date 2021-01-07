@@ -12,7 +12,7 @@
 #define ledStateFeedingOn 2
 #define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
-#define MAX_ALARM_SIZE 4
+#define MAX_ALARM_SIZE 10
 #define SCHEDULING_MODE_INTERVAL 0
 #define SCHEDULING_MODE_ALARM 1
 #define DEFAULT_SCHEDULING_MODE 0
@@ -25,7 +25,7 @@ struct Config {
   int ledState;
   char wifiSsid[32];
   char wifiPassword[64];
-  int alarms[MAX_ALARM_SIZE];
+  uint8_t alarms[MAX_ALARM_SIZE];
   int schedulingMode;
 };
 

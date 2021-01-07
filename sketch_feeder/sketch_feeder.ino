@@ -27,7 +27,8 @@ WifiManager wifiManager;
 NtpManager ntpManager;
 ServerControl serverControl(AUDIO_FEEDING);
 const char* ssid = "Feeder-Access-Point";
-int alarms[MAX_ALARM_SIZE];
+
+AlarmId alarms[MAX_ALARM_SIZE];
 
 Preferences preferences;
 Config& config = preferences.getConfig();
@@ -70,14 +71,8 @@ void saveWifiSetting(String ssid, String password) {
 
   preferences.save();
 }
-char* string2char(String command) {
-  if (command.length() != 0) {
-    char *p = const_cast<char*>(command.c_str());
-    return p;
-  }
-}
 
-void onSetFeedingAlarm(int *alarms) {
+void onSetFeedingAlarm(uint8_t *alarms) {
   Serial.println((String) "onSetFeedingAlarm");
   stopFeedingInterval();
   saveFeedingAlarm(alarms);
@@ -93,7 +88,7 @@ void stopFeedingAlarm() {
     }
   }
 }
-void saveFeedingAlarm(int *alarms) {
+void saveFeedingAlarm(uint8_t  *alarms) {
   config.schedulingMode = SCHEDULING_MODE_ALARM;
   for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
     config.alarms[x] = alarms[x];
@@ -253,7 +248,7 @@ void setup()
     else if (key == "SETTING_FEEDING_ALARM")
     {
       JsonArray arr = ((JsonArray) value);
-      int alarms[arr.size()];
+      uint8_t  alarms[arr.size()];
       for (int x = 0; x < MAX_ALARM_SIZE; x++)  {
         alarms[x] = arr.size() > x ? arr[x] : -1;
       }

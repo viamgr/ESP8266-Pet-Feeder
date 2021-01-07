@@ -2,42 +2,48 @@
 #define AUDIO_CONTROL_H
 #include <Arduino.h>
 #define AUDIO_CONTROL_TASK "AUDIO_CONTROL_TASK"
-
 #include "AudioFileSourceSPIFFS.h"
 #include "AudioFileSourceID3.h"
 #include "AudioGeneratorMP3.h"
 #include "AudioOutputI2SNoDAC.h"
+#include <avr/pgmspace.h>
 
 class AudioControl {
 
   private:
     AudioGeneratorMP3 *mp3;
-
+    AudioFileSourceSPIFFS *file;
+    AudioFileSourceID3 *id3;
+    AudioOutputI2SNoDAC *out;
+    bool stopped = false;
   public:
     AudioControl() {
     }
 
     void play(char *filename, float soundVolume, void (*listener)()) {
       stop();
-      audioLogger = &Serial;
-      AudioFileSourceSPIFFS *file = new AudioFileSourceSPIFFS(filename);
-      AudioFileSourceID3 *id3 = new AudioFileSourceID3(file);
-      id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
-      AudioOutputI2SNoDAC *out = new AudioOutputI2SNoDAC();
+      delay(100);
+      //audioLogger = &Serial;
+      file = new AudioFileSourceSPIFFS(filename);
+      id3 = new AudioFileSourceID3(file);
+      // id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
+      out = new AudioOutputI2SNoDAC();
       out->SetGain(soundVolume);
 
       mp3 = new AudioGeneratorMP3();
       mp3->begin(id3, out);
-
+      stopped = false;
       Tasks.framerate(AUDIO_CONTROL_TASK, 1000, [ = ] {
         if (mp3->isRunning()) {
           if (!mp3->loop()) mp3->stop();
-        } else {
+        } else if (!stopped) {
           stop();
           if ( (listener != NULL))  {
             listener();
           }
-          Serial.printf("MP3 done\n");
+          play(filename,soundVolume,listener);
+          Serial.print("MP3 done\n");
+
         }
       });
     }
@@ -65,10 +71,33 @@ class AudioControl {
 
 
     void stop() {
+
+      stopped = true;
+      Tasks.erase(AUDIO_CONTROL_TASK);
       if (mp3 != NULL && mp3->isRunning()) {
         mp3->stop();
       }
-      Tasks.erase(AUDIO_CONTROL_TASK);
+
+      if (NULL != file) {
+        delete file;
+        file = NULL;
+      }
+
+      if (NULL != id3) {
+        delete id3;
+        id3 = NULL;
+      }
+
+      if (NULL != out) {
+        delete out;
+        out = NULL;
+      }
+
+      if (NULL != mp3) {
+        delete mp3;
+        mp3 = NULL;
+      }
+
     }
 };
 #endif

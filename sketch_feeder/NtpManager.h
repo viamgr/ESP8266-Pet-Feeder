@@ -23,7 +23,7 @@ class NtpManager {
           Serial.println(timeClient->getFormattedTime());
           break;
         }
-        delay(60000);
+        delay(20000);
       }
     }
 

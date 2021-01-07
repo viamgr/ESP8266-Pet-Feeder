@@ -41,8 +41,6 @@ class ServerControl {
       setupEventApi();
       setupUploadApi();
       setupWifiApi();
-      setupConfigApi();
-
       server->begin();
     }
 
@@ -92,15 +90,7 @@ class ServerControl {
       });
 
     }
-    void setupConfigApi() {
-
-      //      server->on("/configs/", HTTP_GET, [ = ](AsyncWebServerRequest * request) {
-      //        server.serveStatic("/", SPIFFS, "/www/");
-      //
-      //            request->send(SPIFFS, "/data/config.json", "application/json");
-      //      });
-
-    }
+    
     void setupUploadApi() {
 
       server->on("/upload/", HTTP_POST, [](AsyncWebServerRequest * request) {}, [ = ](AsyncWebServerRequest * request, const String & filename, size_t index, uint8_t *data, size_t len, bool final) {
