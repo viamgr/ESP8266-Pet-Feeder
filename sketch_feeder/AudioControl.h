@@ -11,10 +11,10 @@
 class AudioControl {
 
   private:
-    AudioGeneratorMP3 *mp3;
-    AudioFileSourceSPIFFS *file;
-    AudioFileSourceID3 *id3;
-    AudioOutputI2SNoDAC *out;
+    AudioGeneratorMP3 *mp3 = NULL;
+    AudioFileSourceSPIFFS *file = NULL;
+    AudioFileSourceID3 *id3 = NULL;
+    AudioOutputI2SNoDAC *out = NULL;
     bool stopped = false;
   public:
     AudioControl() {
@@ -36,14 +36,12 @@ class AudioControl {
       Tasks.framerate(AUDIO_CONTROL_TASK, 1000, [ = ] {
         if (mp3->isRunning()) {
           if (!mp3->loop()) mp3->stop();
-        } else if (!stopped) {
+        } else if (!stopped) {          
           stop();
           if ( (listener != NULL))  {
             listener();
           }
-          play(filename,soundVolume,listener);
           Serial.print("MP3 done\n");
-
         }
       });
     }
@@ -71,12 +69,11 @@ class AudioControl {
 
 
     void stop() {
+      Serial.println((String)"Tasks AUDIO_CONTROL_TASK:" + Tasks.isRunning(AUDIO_CONTROL_TASK));
 
       stopped = true;
-      Tasks.erase(AUDIO_CONTROL_TASK);
-      if (mp3 != NULL && mp3->isRunning()) {
-        mp3->stop();
-      }
+      if (Tasks.isRunning(AUDIO_CONTROL_TASK) == true)
+        Tasks.erase(AUDIO_CONTROL_TASK);
 
       if (NULL != file) {
         delete file;
