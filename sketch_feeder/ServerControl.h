@@ -11,7 +11,7 @@
 
 typedef std::function<void(JsonObject &keyValue)> GetEventFunction;
 
-typedef std::function<void(void)> UploadListener;
+typedef std::function<void(String filename)> UploadListener;
 
 typedef std::function<void(void)> StopTasksListener;
 
@@ -25,7 +25,8 @@ class ServerControl {
 
     File tempUploadFile;
     String feedingFileName;
-    const String feedingFileNameTemp = "feeding.mp3.tmp";
+    String configFilePath;
+    const String tempFileName = "upload.tmp";
 
     static String processor(const String & var) {
       Serial.println(var);
@@ -41,6 +42,7 @@ class ServerControl {
       setupEventApi();
       setupUploadApi();
       setupWifiApi();
+      setupConfigApi();
       server->begin();
     }
 
@@ -90,26 +92,33 @@ class ServerControl {
       });
 
     }
-    
+
     void setupUploadApi() {
 
       server->on("/upload/", HTTP_POST, [](AsyncWebServerRequest * request) {}, [ = ](AsyncWebServerRequest * request, const String & filename, size_t index, uint8_t *data, size_t len, bool final) {
-        // Initialize SPIFFS
-        if (!SPIFFS.begin()) {
-          Serial.println("An Error has occurred while mounting SPIFFS");
-          return;
-        }
-        handleUpload(request, filename, index, data, len, final);
+        handleUpload(request, feedingFileName, index, data, len, final);
+      });
+    }
+    void setupConfigApi() {
+
+      server->on("/config/", HTTP_POST, [](AsyncWebServerRequest * request) {}, [ = ](AsyncWebServerRequest * request, const String & filename, size_t index, uint8_t *data, size_t len, bool final) {
+        handleUpload(request, configFilePath, index, data, len, final);
       });
     }
 
     void handleUpload(AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+      // Initialize SPIFFS
+      if (!SPIFFS.begin()) {
+        Serial.println("An Error has occurred while mounting SPIFFS");
+        return;
+      }
+
       if (!index) {
         stopTasksListener();
         // open the file on first call and store the file handle in the request object
         //    request->_tempFile = SPIFFS.open(filename, "w");
-        SPIFFS.remove(feedingFileNameTemp);
-        tempUploadFile = SPIFFS.open(feedingFileNameTemp, "w");
+        SPIFFS.remove(tempFileName);
+        tempUploadFile = SPIFFS.open(tempFileName, "w");
       }
 
       if (len) {
@@ -119,19 +128,20 @@ class ServerControl {
       if (final) {
         // close the file handle as the upload is now done
         tempUploadFile.close();
-        SPIFFS.remove(feedingFileName);
-        SPIFFS.rename(feedingFileNameTemp, feedingFileName);
+        SPIFFS.remove(filename);
+        SPIFFS.rename(tempFileName, filename);
         request->send(200, "text/plain", "File Uploaded !");
         if (uploadListener != NULL)
-          uploadListener();
+          uploadListener(filename);
       }
     }
 
   public:
 
-    ServerControl(const char *feedingFileName) {
+    ServerControl(const char *feedingFileName, const char *configFilePath) {
       Serial.begin(115200);
       this->feedingFileName = feedingFileName;
+      this->configFilePath = configFilePath;
       setup();
     }
 
