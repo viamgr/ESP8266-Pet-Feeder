@@ -6,7 +6,6 @@
 #include <ESPAsyncTCP.h>
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
-#include "ESP8266WiFi.h"
 #include <TimeLib.h>
 
 typedef std::function<void(JsonObject &keyValue)> GetEventFunction;
