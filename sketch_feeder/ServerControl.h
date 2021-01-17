@@ -1,31 +1,29 @@
 #ifndef SERVER_CONTROL_H
 #define SERVER_CONTROL_H
 #include <Arduino.h>
-#include <ESPAsyncWebServer.h>
 #include <FS.h>   // Include the SPIFFS library
-#include <ESPAsyncTCP.h>
-#include <AsyncJson.h>
 #include <ArduinoJson.h>
 #include <TimeLib.h>
+#include <ESP8266WebServer.h>
 
-typedef std::function<void(JsonObject &keyValue)> GetEventFunction;
-
+typedef std::function<void(String name)> GetEventFunction;
 typedef std::function<void(String filename)> UploadListener;
-
 typedef std::function<void(void)> StopTasksListener;
+
+static const char TEXT_PLAIN[] PROGMEM = "text/plain";
+static const char APPLICATION_JSON[] PROGMEM = "application/json";
+static const char FS_INIT_ERROR[] PROGMEM = "FS INIT ERROR";
+
+#define DBG_OUTPUT_PORT Serial
 
 class ServerControl {
   private:
+    bool fsOK;
     GetEventFunction getEventListener = NULL;
     UploadListener uploadListener = NULL;
     StopTasksListener stopTasksListener = NULL;
-
-    AsyncWebServer *server = new AsyncWebServer(80);
-
-    File tempUploadFile;
-    String feedingFileName;
-    String configFilePath;
-    const String tempFileName = "upload.tmp";
+    ESP8266WebServer *server;
+    File uploadFile;
 
     static String processor(const String & var) {
       Serial.println(var);
@@ -37,43 +35,43 @@ class ServerControl {
     }
 
     void setup() {
-      setupStaticPage();
+      fsOK = SPIFFS.begin();
       setupEventApi();
       setupUploadApi();
       setupWifiApi();
-      setupConfigApi();
+      setupStaticPage();
       server->begin();
     }
 
     void setupStaticPage() {
-      server->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setTemplateProcessor(processor);
+      server->serveStatic("/", SPIFFS, "/");
+
+      //      server->serveStatic("/upload/", SPIFFS, "/upload/");
 
     }
 
     void setupEventApi() {
 
-      AsyncCallbackJsonWebHandler* handler = new AsyncCallbackJsonWebHandler("/events/", [ = ](AsyncWebServerRequest * request, JsonVariant & json) {
-        JsonObject jsonObj = json.as<JsonObject>();
-        request->send(200);
-        getEventListener(jsonObj);
+      server->on("/events",  HTTP_GET, [&]() {
+        String name = server->arg("name");
+        replyOK();
+        getEventListener(name);
       });
-      server->addHandler(handler);
-
     }
 
     void setupWifiApi() {
 
-      server->on("/wifi/list", HTTP_GET, [ = ](AsyncWebServerRequest * request) {
+      server->on("/wifi/list", HTTP_GET, [ = ]() {
         String json = "[";
         int n = WiFi.scanComplete();
         if (n == -2) {
           WiFi.scanNetworks(true);
         } else if (n) {
           for (int i = 0; i < n; ++i) {
-            if (i) json += ",";
+            if (i != 0) json += ",";
             json += "{";
             //            json += "\"rssi\":" + String(WiFi.RSSI(i));
-            json += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
+            json += "\"ssid\":\"" + WiFi.SSID(i) + "\"";
             json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
             //json += ",\"channel\":" + String(WiFi.channel(i));
             json += ",\"secure\":" + String(WiFi.encryptionType(i));
@@ -86,61 +84,79 @@ class ServerControl {
           }
         }
         json += "]";
-        request->send(200, "application/json", json);
+        server->send(200,  FPSTR(APPLICATION_JSON), json);
         json = String();
       });
 
     }
-
-    void setupUploadApi() {
-
-      server->on("/upload/", HTTP_POST, [](AsyncWebServerRequest * request) {}, [ = ](AsyncWebServerRequest * request, const String & filename, size_t index, uint8_t *data, size_t len, bool final) {
-        handleUpload(request, feedingFileName, index, data, len, final);
-      });
-    }
-    void setupConfigApi() {
-
-      server->on("/config/", HTTP_POST, [](AsyncWebServerRequest * request) {}, [ = ](AsyncWebServerRequest * request, const String & filename, size_t index, uint8_t *data, size_t len, bool final) {
-        handleUpload(request, configFilePath, index, data, len, final);
-      });
+    void replyOK() {
+      server->send(200, FPSTR(TEXT_PLAIN), "");
     }
 
-    void handleUpload(AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-      // Initialize SPIFFS
-      if (!SPIFFS.begin()) {
-        Serial.println("An Error has occurred while mounting SPIFFS");
+    void replyServerError(String msg) {
+      DBG_OUTPUT_PORT.println(msg);
+      server->send(500);
+    }
+
+    /*
+       Handle a file upload request
+    */
+    void handleFileUpload() {
+      if (!fsOK) {
+        return replyServerError(FPSTR(FS_INIT_ERROR));
+      }
+      if (server->uri() != "/upload") {
         return;
       }
+      HTTPUpload& upload = server->upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        String filename = upload.filename;
+        // Make sure paths always start with "/"
+        if (!filename.startsWith("/")) {
+          filename = "/" + filename;
+        }
+        DBG_OUTPUT_PORT.println(String("handleFileUpload Name: ") + filename);
+        uploadFile = SPIFFS.open(filename, "w");
+        if (!uploadFile) {
+          return replyServerError(F("CREATE FAILED"));
+        }
+        DBG_OUTPUT_PORT.println(String("Upload: START, filename: ") + filename);
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (uploadFile) {
+          size_t bytesWritten = uploadFile.write(upload.buf, upload.currentSize);
+          if (bytesWritten != upload.currentSize) {
+            return replyServerError(F("WRITE FAILED"));
+          }
+        }
+        DBG_OUTPUT_PORT.println(String("Upload: WRITE, Bytes: ") + upload.currentSize);
+      } else if (upload.status == UPLOAD_FILE_END) {
+        DBG_OUTPUT_PORT.println(String("Upload: END, Size: ") + upload.totalSize);
+        if (uploadFile) {
+          uploadFile.close();
 
-      if (!index) {
-        stopTasksListener();
-        // open the file on first call and store the file handle in the request object
-        //    request->_tempFile = SPIFFS.open(filename, "w");
-        SPIFFS.remove(tempFileName);
-        tempUploadFile = SPIFFS.open(tempFileName, "w");
-      }
-
-      if (len) {
-        tempUploadFile.write(data, len);
-      }
-
-      if (final) {
-        // close the file handle as the upload is now done
-        tempUploadFile.close();
-        SPIFFS.remove(filename);
-        SPIFFS.rename(tempFileName, filename);
-        request->send(200, "text/plain", "File Uploaded !");
-        if (uploadListener != NULL)
+          String filename = upload.filename;
+          // Make sure paths always start with "/"
+          if (!filename.startsWith("/")) {
+            filename = "/" + filename;
+          }
           uploadListener(filename);
+        }
       }
+    }
+
+    void setupUploadApi() {
+      server->on("/upload",  HTTP_POST, [&]() {
+        replyOK();
+      }, [&]() {
+        handleFileUpload();
+      });
     }
 
   public:
 
-    ServerControl(const char *feedingFileName, const char *configFilePath) {
+    ServerControl() {
       Serial.begin(115200);
-      this->feedingFileName = feedingFileName;
-      this->configFilePath = configFilePath;
+      this->server = new ESP8266WebServer(80);
       setup();
     }
 
@@ -153,6 +169,12 @@ class ServerControl {
     }
     void setStopTasksListener(const StopTasksListener& listener) {
       this->stopTasksListener = listener;
+    }
+
+    void loop() {
+
+      server->handleClient();
+
     }
 };
 #endif

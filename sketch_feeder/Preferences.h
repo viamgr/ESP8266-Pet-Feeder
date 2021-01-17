@@ -12,7 +12,7 @@
 #define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
 #define MAX_ALARM_SIZE 10
-#define CONFIG_FILE_PATH "/upload/config.json"
+#define CONFIG_FILE_PATH "/config.json"
 
 class Preferences
 {
@@ -116,6 +116,7 @@ class Preferences
 
       if (!file) {
         Serial.println(F("Error opening file for reading"));
+        Serial.println(CONFIG_FILE_PATH);
         return;
       }
 
