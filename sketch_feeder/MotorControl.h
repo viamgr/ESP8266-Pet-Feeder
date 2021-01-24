@@ -29,7 +29,7 @@ class MotorControl {
     }
     void stop() {
       myservo.detach();
-      Tasks.erase(MOTOR_CONTROL_TASK);
+      Tasks.stop(MOTOR_CONTROL_TASK);
     }
 };
 #endif

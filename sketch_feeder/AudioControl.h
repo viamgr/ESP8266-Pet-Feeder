@@ -22,11 +22,10 @@ class AudioControl {
 
     void play(char *filename, float soundVolume, void (*listener)()) {
       stop();
-      delay(100);
       //audioLogger = &Serial;
       file = new AudioFileSourceSPIFFS(filename);
       id3 = new AudioFileSourceID3(file);
-      // id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
+      id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
       out = new AudioOutputI2SNoDAC();
       out->SetGain(soundVolume);
 
@@ -34,15 +33,23 @@ class AudioControl {
       mp3->begin(id3, out);
       stopped = false;
       Tasks.framerate(AUDIO_CONTROL_TASK, 1000, [ = ] {
-        if (mp3->isRunning()) {
-          if (!mp3->loop()) mp3->stop();
-        } else if (!stopped) {          
-          stop();
-          if ( (listener != NULL))  {
-            listener();
+        if (!stopped) {
+          if (mp3->isRunning()) {
+            if (!mp3->loop()) mp3->stop();
+          } else {
+            Serial.print("MP3 done\n");
+            stop();
+            if ( (listener != NULL))  {
+              listener();
+            }
           }
-          Serial.print("MP3 done\n");
         }
+        else{
+          if (mp3 != NULL && mp3->isRunning()) {
+            mp3->stop();
+          }
+        }
+
       });
     }
 
@@ -69,11 +76,11 @@ class AudioControl {
 
 
     void stop() {
-      Serial.println((String)"Tasks AUDIO_CONTROL_TASK:" + Tasks.isRunning(AUDIO_CONTROL_TASK));
+      Serial.println((String)"stopping Audio:" + Tasks.isRunning(AUDIO_CONTROL_TASK));
 
       stopped = true;
-      if (Tasks.isRunning(AUDIO_CONTROL_TASK) == true)
-        Tasks.erase(AUDIO_CONTROL_TASK);
+      if (Tasks.getTaskByName(AUDIO_CONTROL_TASK) != nullptr && Tasks.isRunning(AUDIO_CONTROL_TASK) == true)
+        Tasks.stop(AUDIO_CONTROL_TASK);
 
       if (NULL != file) {
         delete file;

@@ -7,6 +7,8 @@
 #include <ESP8266WebServer.h>
 
 typedef std::function<void(String name)> GetEventFunction;
+typedef std::function<String(String key)> GetStatusFunction;
+typedef std::function<void(String key, String value)> SetStatusFunction;
 typedef std::function<void(String filename)> UploadListener;
 typedef std::function<void(void)> StopTasksListener;
 
@@ -20,6 +22,8 @@ class ServerControl {
   private:
     bool fsOK;
     GetEventFunction getEventListener = NULL;
+    SetStatusFunction onSetStatusListener = NULL;
+    GetStatusFunction onGetStatusListener = NULL;
     UploadListener uploadListener = NULL;
     StopTasksListener stopTasksListener = NULL;
     ESP8266WebServer *server;
@@ -57,6 +61,16 @@ class ServerControl {
         replyOK();
         getEventListener(name);
       });
+      server->on("/setStatus",  HTTP_GET, [&]() {
+        String key = server->arg("key");
+        String value = server->arg("value");
+        replyOK();
+        onSetStatusListener(key, value);
+      });
+      server->on("/getStatus",  HTTP_GET, [&]() {
+        String key = server->arg("key");
+        replyOKWithMsg(onGetStatusListener(key));
+      });
     }
 
     void setupWifiApi() {
@@ -92,6 +106,10 @@ class ServerControl {
     void replyOK() {
       server->send(200, FPSTR(TEXT_PLAIN), "");
     }
+    void replyOKWithMsg(String msg) {
+      server->send(200, FPSTR(TEXT_PLAIN), msg);
+    }
+
 
     void replyServerError(String msg) {
       DBG_OUTPUT_PORT.println(msg);
@@ -109,7 +127,8 @@ class ServerControl {
         return;
       }
       HTTPUpload& upload = server->upload();
-      if (upload.status == UPLOAD_FILE_START) {
+      if (upload.status == UPLOAD_FILE_START) {        
+        stopTasksListener();
         String filename = upload.filename;
         // Make sure paths always start with "/"
         if (!filename.startsWith("/")) {
@@ -162,6 +181,12 @@ class ServerControl {
 
     void setEventListener(const GetEventFunction& listener) {
       this->getEventListener = listener;
+    }
+    void setOnGetStatusListener(const GetStatusFunction& listener) {
+      this->onGetStatusListener = listener;
+    }
+    void setOnSetStatusListener(const SetStatusFunction& listener) {
+      this->onSetStatusListener = listener;
     }
 
     void setUploadListener(const UploadListener& listener) {

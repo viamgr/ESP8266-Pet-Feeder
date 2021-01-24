@@ -7,70 +7,62 @@
 class LedControl {
   private:
     byte pin;
-    unsigned int mode;
+    uint32_t offDelay;
+    bool state = false;
     void setup() {
-      if (mode == ledStateAlwaysOff || mode == ledStateFeedingOn) {
-        off();
-      }
-      else if (mode == ledStateFeedingOn) {
-        on();
-      }
+
     }
 
   public:
-    LedControl(byte pin, unsigned int mode) {
+    LedControl(byte pin) {
       this->pin = pin;
       pinMode(pin, OUTPUT);
-      setMode(mode);
       setup();
 
     }
 
-    void setMode(unsigned int mode) {
-      this->mode = mode;
+    void setup(const uint32_t offDelay) {
+      this->offDelay = offDelay;
     }
-
     void on() {
-      if (mode != ledStateAlwaysOff)
-        digitalWrite(pin, HIGH);
-    }
-    void onWithDismiss() {
+      Serial.println("Turn On LED");
       dismiss();
-      on();
+      turnOffLater();
+      state = true;
+      digitalWrite(pin, HIGH);
+
     }
 
     void off() {
-      if (mode != ledStateAlwaysOn)
-        digitalWrite(pin, LOW);
-    }
+      Serial.println("Turn Off LED");
 
-    void offWithDismiss() {
       dismiss();
-      off();
+      digitalWrite(pin, LOW);
+      state = false;
     }
 
-    void offAfter(const int offDelay) {
-      Serial.println((String)"offDelay "+ offDelay);
-      // task is executed only once after offDelay[ms]
+    void turnOffLater() {
+      Serial.println((String)"Led Turn Off After: " + offDelay);
       Tasks.once(offDelayedTask, offDelay, [&] {
-        Serial.println((String)"state "+ Tasks.isStopping(offDelayedTask)+" isRunning"+Tasks.isRunning(offDelayedTask));
         off();
       });
     }
 
     void dismiss() {
-      off();
-      Serial.println((String)"stopping " + offDelayedTask);
-      Tasks.erase(offDelayedTask);
+      Serial.println((String)"Don't Need To Turn Off Led");
+      Tasks.stop(offDelayedTask);
     }
 
-    void toggle(){
-          Serial.println((String)"toggle " + digitalRead(pin));
+    void toggle() {
 
-        if(digitalRead(pin) == LOW)
-            onWithDismiss();
-        else
-            offWithDismiss();
+      Serial.println((String)"Toggle Led Currend State Is:" + state);
+      if (!state)
+      {
+        on();
+      }
+      else {
+        off();
+      }
     }
 };
 #endif

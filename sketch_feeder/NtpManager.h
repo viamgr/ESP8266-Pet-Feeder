@@ -5,6 +5,7 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #define NTP_MANAGER_TASK "NTP_MANAGER_TASK"
+#define NTP_MANAGER_TASK_LONG "NTP_MANAGER_TASK_LONG"
 typedef std::function<void(unsigned long epochTime)> OnTimeUpdateListener;
 
 class NtpManager {
@@ -14,16 +15,13 @@ class NtpManager {
     NTPClient *timeClient = new NTPClient(udp, "pool.ntp.org");
     const int interval = 60 * 60 * 1000;
     void update() {
-      for (int i = 0; i < 30; i++) {
-        Serial.println("getting time");
-        bool updated = timeClient->update();
-        if (updated) {
-          if (onTimeUpdateListener != NULL)
-            onTimeUpdateListener(timeClient->getEpochTime());
-          Serial.println(timeClient->getFormattedTime());
-          break;
-        }
-        delay(2000);
+      Serial.println("getting time");
+      bool updated = timeClient->update();
+      if (updated) {
+        if (onTimeUpdateListener != NULL)
+          onTimeUpdateListener(timeClient->getEpochTime());
+        Serial.println(timeClient->getFormattedTime());
+        stop();
       }
     }
 
@@ -33,17 +31,25 @@ class NtpManager {
     }
     void start() {
       stop();
-      Tasks.once(NTP_MANAGER_TASK, 100, [ = ] {
-        timeClient->begin();
+      startLongTask();
+      timeClient->begin();
+      update();
+      Tasks.interval(NTP_MANAGER_TASK, 3000, 20, [ = ] {
         update();
-        Tasks.interval(NTP_MANAGER_TASK, interval, [ = ]{
-          update();
-        });
       });
     }
 
     void stop() {
-      Tasks.erase(NTP_MANAGER_TASK);
+      if (Tasks.getTaskByName(NTP_MANAGER_TASK) != nullptr && Tasks.isRunning(NTP_MANAGER_TASK))
+        Tasks.erase(NTP_MANAGER_TASK);
+    }
+    void startLongTask() {
+      if (Tasks.getTaskByName(NTP_MANAGER_TASK_LONG) != nullptr && Tasks.isRunning(NTP_MANAGER_TASK_LONG))
+        Tasks.erase(NTP_MANAGER_TASK_LONG);
+      Tasks.interval(NTP_MANAGER_TASK_LONG, interval, [ = ] {
+        Serial.println("startLongTask");
+        update();
+      });
     }
 
     void setOnTimeUpdateListener(const OnTimeUpdateListener& listener) {

@@ -22,14 +22,14 @@
 #define LED_PIN D6
 #define MOTOR_PIN D5
 #define BUTTON_PIN D2
+const char* ssid = "Feeder-Access-Point";
 
-LedControl led(LED_PIN, ledStateFeedingOn);
+LedControl led(LED_PIN);
 MotorControl motor(MOTOR_PIN);
 AudioControl audioControl;
-WifiManager wifiManager;
+WifiManager wifiManager(ssid);
 NtpManager ntpManager;
 ServerControl serverControl;
-const char* ssid = "Feeder-Access-Point";
 
 CronId alarms[dtNBR_ALARMS];
 
@@ -38,7 +38,9 @@ Preferences preferences;
 ClickButton button(BUTTON_PIN);
 bool first = true;
 
-void handleButton() {
+void setupButton() {
+
+  pinMode(BUTTON_PIN, INPUT);
   Tasks.framerate(1000, [ = ] {
     if (button.changed == 1) {
       if (first == false) {
@@ -46,7 +48,7 @@ void handleButton() {
         if (button.clicks == -1) {
           onCompositeFeeding();
         } else if (button.clicks == -2) {
-          onLedToggle();
+          onLedTimerEvent();
         }
       }
       first = false;
@@ -54,16 +56,10 @@ void handleButton() {
   });
 }
 
-void onLedToggle() {
-  led.setMode(preferences.getLedState());
-  led.toggle();
-  led.offAfter(preferences.getLedTurnOffDelay());
-}
-
 void connectToWifi() {
   Serial.println((String) "connectToWifi" + preferences.getWifiSsid());
   if (preferences.getWifiSsid() != NULL && preferences.getWifiSsid()[0] != '\0')
-    wifiManager.connectToWifi(preferences.getWifiSsid(), preferences.getWifiPassword());
+    wifiManager.connectToWifi();
 }
 
 void stopFeedingAlarm() {
@@ -81,23 +77,23 @@ void onFeedingAlarm() {
   for (int x = 0; x < data.size(); x++)  {
     const char *time = data[x];
     Serial.println((String)"time:" + time);
-    alarms[x] = Cron.create((char*)time, onCompositeFeeding, false); // 8:30am every day
+    alarms[x] = Cron.create((char*)time, onCompositeFeeding, false);
   }
 }
 
 void stopAllTasks() {
   audioControl.stop();
-  led.dismiss();
+  led.off();
   motor.stop();
-  // todo add wifi and ntp ??!!
+  wifiManager.runLongTimeConnectingTask();
+  ntpManager.startLongTask();
 }
 void onCompositeFeeding() {
   Serial.println((String)"onCompositeFeeding");
   audioControl.play(AUDIO_FEEDING, preferences.getSoundVolume(), [ = ]() {
-    led.setMode(preferences.getLedState());
     led.on();
     motor.rotate(preferences.getFeedingDuration(), [ = ]() {
-      led.offAfter(preferences.getLedTurnOffDelay());
+      led.on();
     });
   });
 
@@ -115,14 +111,11 @@ void onPlayFeedingAudioEvent(void (*listener)()) {
 
 void onLedTimerEvent() {
   Serial.println((String)"onLedTimerEvent");
-  led.setMode(preferences.getLedState());
-  led.on();
-  led.offAfter(preferences.getLedTurnOffDelay());
+  led.toggle();
 }
 
 void resetFeedingTasks() {
   stopFeedingAlarm();
-  delay(100);
   onFeedingAlarm();
 
 }
@@ -131,23 +124,41 @@ void setDeviceTime(unsigned long epochTime) {
   Serial.println((String)"setDeviceTime epochTime... " + epochTime);
   setTime(epochTime);
 
-  // set current day/time
   struct timeval tv;
   tv.tv_sec =   epochTime;
 
-  setenv("TZ", "UTC-03:30", 0);
   settimeofday(&tv, NULL);
   resetFeedingTasks();
 }
 
 void onSetupConfig() {
-  stopAllTasks();
   resetFeedingTasks();
+  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword());
+  led.setup(preferences.getLedTurnOffDelay());
 
+}
+void setStatusCallback(String key, String value) {
+  if (key == "STATUS_TIME")
+    setDeviceTime(string_to_long(value));
+}
+
+unsigned long string_to_long (String number)
+{
+  number = number + ' ';
+  char buf[number.length()];
+  //Serial.println(number);
+  number.toCharArray(buf, number.length());
+  unsigned long result = atol(buf);
+  //Serial.println(result);
+  return result;
+}
+
+String getStatusCallback(String key) {
+  if (key == "STATUS_TIME")
+    return String(now());
 }
 void eventCallback(String name) {
   stopAllTasks();
-  delay(100);
   Serial.println((String)"name " + name);
   if (name == "EVENT_FEEDING")
     onFeedingEvent(NULL);
@@ -222,12 +233,15 @@ void setup()
 {
   Serial.begin(115200);
 
-  showDeviceInfo();
+  //showDeviceInfo();
 
-  pinMode(BUTTON_PIN, INPUT);
-  WiFi.softAP(ssid);
-
-  setDeviceTime(0);
+  onSetupConfig();
+  audioControl.play(AUDIO_START_UP, preferences.getSoundVolume(), []() {
+    initialSetup();
+  });
+}
+void initialSetup() {
+  setenv("TZ", "UTC-03:30", 0);
   ntpManager.setOnTimeUpdateListener(setDeviceTime);
 
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
@@ -239,15 +253,16 @@ void setup()
       ntpManager.start();
     }
   });
+
+
   serverControl.setEventListener(eventCallback);
-
-  connectToWifi();
-
+  serverControl.setOnSetStatusListener(setStatusCallback);
+  serverControl.setOnGetStatusListener(getStatusCallback);
   serverControl.setStopTasksListener([ = ]() {
     stopAllTasks();
   });
-
   serverControl.setUploadListener([ = ](String filename) {
+    stopAllTasks();
     Serial.print((String)"filename uploaded:" + filename);
 
     if (filename == AUDIO_FEEDING) {
@@ -257,14 +272,12 @@ void setup()
       preferences.reload();
       onSetupConfig();
     }
-
   });
 
-  onSetupConfig();
 
-  handleButton();
+  connectToWifi();
+  setupButton();
 }
-
 void loop()
 {
   button.Update();
