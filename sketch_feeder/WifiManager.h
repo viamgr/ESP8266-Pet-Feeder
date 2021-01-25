@@ -11,24 +11,31 @@
 #define WIFI_STA_STATE_ESTABLISHED 2
 #define WIFI_STA_STATE_FAILED 4
 
+
+#define WIFI_MANAGER_TASK_LONG_INTERVAL 3 * 60 * 1000
+#define WIFI_MANAGER_TASK_SHORT_INTERVAL 1 * 1000
+#define WIFI_MANAGER_TASK_MAX_INTERVAL 5 * 60 * 1000
+
 typedef std::function<void(int status)> WifiStatusListener;
 
-class WifiManager {
+class WifiManager: public Task  {
 
   private:
     const int retryCount = 4;
     String ssid;
     String password;
+    uint8_t status;
     WifiStatusListener wifiStatusListener = NULL;
     WiFiEventHandler mDisConnectHandler;
 
     void onDisconnect() {
       Serial.println ( "WiFi On Disconnect." );
+      setStatus(WIFI_STA_STATE_FAILED);
       WiFi.disconnect();
-
+      restart();
     }
   public:
-    WifiManager(String accessPointSsid) {
+    WifiManager(Scheduler* scheduler, String accessPointSsid) : Task(WIFI_MANAGER_TASK_SHORT_INTERVAL, TASK_FOREVER, scheduler) {
       WiFi.softAP(accessPointSsid);
       WiFi.setAutoConnect(false);
       WiFi.setAutoReconnect(false);
@@ -36,66 +43,64 @@ class WifiManager {
       {
         this->onDisconnect();
       });
-
     }
     void setup(String ssid, String password) {
       this->ssid = ssid;
       this->password = password;
-      runLongTimeConnectingTask();
+      restartDelayed();
     }
     void setOnWifiStatusListener(const WifiStatusListener& listener) {
       this->wifiStatusListener = listener;
     }
-    void connectToWifi() {
-      Tasks.stop(WIFI_MANAGER_TASK);
-      this->ssid = ssid;
-      this->password = password;
+
+    bool OnEnable() {
+      Serial.println((String)"WifiManager OnEnable");
       WiFi.mode(WIFI_AP_STA);
       WiFi.begin(ssid, password);
-      if (wifiStatusListener != NULL) wifiStatusListener(WIFI_STA_STATE_BEGIN);
-      Tasks.interval(WIFI_MANAGER_TASK, 5000, retryCount, [this] {
-        Serial.println((String)"count:" + Tasks.count(WIFI_MANAGER_TASK) + " ssid:" + this->ssid + ", password:" + this->password);
-
-        if (WiFi.status() == WL_CONNECTED) {
-          Serial.println("Connected... ");
-          if (wifiStatusListener != NULL) wifiStatusListener(WIFI_STA_STATE_ESTABLISHED);
-          Tasks.stop(WIFI_MANAGER_TASK);
-        }
-        else{
-          if (Tasks.count(WIFI_MANAGER_TASK) >= retryCount) {
-            Tasks.stop(WIFI_MANAGER_TASK);
-
-            if (wifiStatusListener != NULL) {
-              wifiStatusListener(WIFI_STA_STATE_FAILED);
-            }
-          }
-          else{
-            if (wifiStatusListener != NULL) {
-              wifiStatusListener(WIFI_STA_STATE_CONNECTING);
-            }
-            Serial.println("Connecting to Wifi");
-          }
-
-        }
-      });
+      return true;
     }
 
-    void runLongTimeConnectingTask() {
-      if (Tasks.getTaskByName(WIFI_MANAGER_TASK_LONG) != nullptr)
-        Tasks.erase(WIFI_MANAGER_TASK_LONG);
-      Tasks.interval(WIFI_MANAGER_TASK_LONG, 120000, [this] {
-        Serial.println((String) + "wifiState ssid:" + this->ssid + ", password:" + this->password + " state:" + (WiFi.status()) );
-        Serial.println((String) + "flag:" + (this->ssid != NULL && this->ssid != "") + " WL_CONNECTED:" + WL_CONNECTED );
-        if (WiFi.status() != WL_CONNECTED && this->ssid != NULL && this->ssid != "") {
-          Serial.println("Trying To Connect");
-
-          WiFi.begin(this->ssid, this->password);
-          Tasks.once(5000, [this] {
-            if (WiFi.status() == WL_CONNECTED && this->wifiStatusListener != NULL) this->wifiStatusListener(WIFI_STA_STATE_ESTABLISHED);
-          });
-        }
-      });
-
+    void setStatus(uint8_t value) {
+      Serial.println((String)"WifiManager setStatus value:" + value + " old:" + status );
+      if (wifiStatusListener != NULL && value != status) wifiStatusListener(value);
+      status = value;
     }
+
+    void update() {
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("Connected... ");
+        setInterval(WIFI_MANAGER_TASK_LONG_INTERVAL);
+        restartDelayed(WIFI_MANAGER_TASK_LONG_INTERVAL);
+        setStatus(WIFI_STA_STATE_ESTABLISHED);
+
+      }
+      else {
+        unsigned long aInterval = WIFI_MANAGER_TASK_SHORT_INTERVAL * getRunCounter();
+        if (aInterval > WIFI_MANAGER_TASK_MAX_INTERVAL) {
+          aInterval = WIFI_MANAGER_TASK_MAX_INTERVAL;
+        }
+        Serial.println((String)"Failed connecting to wifi, Retry after:" + aInterval);
+
+        setInterval(aInterval);
+        setStatus(WIFI_STA_STATE_CONNECTING);
+
+      }
+    }
+
+    void OnDisable() {
+      int i = getId();
+      Serial.print(millis()); Serial.print(":\t");
+      Serial.print("WifiManager: TaskID=");
+      Serial.println(i);
+      WiFi.disconnect();
+      //      mDisConnectHandler = NULL;
+    }
+
+    bool Callback() {
+      Serial.println((String)"WifiManager Callback");
+      update();
+      return true;
+    }
+
 };
 #endif

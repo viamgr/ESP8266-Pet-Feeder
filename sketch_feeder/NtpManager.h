@@ -8,48 +8,56 @@
 #define NTP_MANAGER_TASK_LONG "NTP_MANAGER_TASK_LONG"
 typedef std::function<void(unsigned long epochTime)> OnTimeUpdateListener;
 
-class NtpManager {
+#define NTP_MANAGER_TASK_LONG_INTERVAL 60 * 60 * 1000
+#define NTP_MANAGER_TASK_SHORT_INTERVAL 3 * 1000
+#define NTP_MANAGER_TASK_MAX_INTERVAL 5 * 60 * 1000
+
+
+class NtpManager: public Task  {
   private:
     OnTimeUpdateListener onTimeUpdateListener = NULL;
     WiFiUDP udp;
     NTPClient *timeClient = new NTPClient(udp, "pool.ntp.org");
-    const int interval = 60 * 60 * 1000;
     void update() {
       Serial.println("getting time");
       bool updated = timeClient->update();
       if (updated) {
-        if (onTimeUpdateListener != NULL)
-          onTimeUpdateListener(timeClient->getEpochTime());
+        if (onTimeUpdateListener != NULL) onTimeUpdateListener(timeClient->getEpochTime());
         Serial.println(timeClient->getFormattedTime());
-        stop();
+        setInterval(NTP_MANAGER_TASK_LONG_INTERVAL);
+        restartDelayed();
+      }
+      else {
+        unsigned long aInterval = NTP_MANAGER_TASK_SHORT_INTERVAL * getRunCounter();
+        if (aInterval > NTP_MANAGER_TASK_MAX_INTERVAL) {
+          aInterval = NTP_MANAGER_TASK_MAX_INTERVAL;
+        }
+        Serial.println((String)"Failed getting time, Retry after:" + aInterval);
+
+        setInterval(aInterval);
       }
     }
 
   public:
-    NtpManager() {
-      //timeClient->setTimeOffset(offset);
-    }
-    void start() {
-      stop();
-      startLongTask();
-      timeClient->begin();
-      update();
-      Tasks.interval(NTP_MANAGER_TASK, 3000, 20, [ = ] {
-        update();
-      });
+    NtpManager(Scheduler* scheduler) : Task(NTP_MANAGER_TASK_SHORT_INTERVAL, TASK_FOREVER, scheduler) {
+
     }
 
-    void stop() {
-      if (Tasks.getTaskByName(NTP_MANAGER_TASK) != nullptr && Tasks.isRunning(NTP_MANAGER_TASK))
-        Tasks.erase(NTP_MANAGER_TASK);
+    bool Callback() {
+      Serial.println((String)"NtpManager Callback");
+      update();
+      return true;
     }
-    void startLongTask() {
-      if (Tasks.getTaskByName(NTP_MANAGER_TASK_LONG) != nullptr && Tasks.isRunning(NTP_MANAGER_TASK_LONG))
-        Tasks.erase(NTP_MANAGER_TASK_LONG);
-      Tasks.interval(NTP_MANAGER_TASK_LONG, interval, [ = ] {
-        Serial.println("startLongTask");
-        update();
-      });
+    bool OnEnable() {
+      Serial.println((String)"NtpManager OnEnable");
+      restart();
+      timeClient->begin();
+      return true;
+    }
+
+    void OnDisable() {
+      Serial.println((String)"NtpManager OnDisable");
+      timeClient->end();
     }
 
     void setOnTimeUpdateListener(const OnTimeUpdateListener& listener) {

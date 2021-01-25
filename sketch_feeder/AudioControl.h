@@ -1,5 +1,14 @@
 #ifndef AUDIO_CONTROL_H
 #define AUDIO_CONTROL_H
+
+
+#define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between tasks if no callback methods were invoked during the pass 
+#define _TASK_STATUS_REQUEST    // Compile with support for StatusRequest functionality - triggering tasks on status change events in addition to time only
+#define _TASK_WDT_IDS           // Compile with support for wdt control points and task ids
+#define _TASK_PRIORITY          // Support for layered scheduling priority
+#define _TASK_TIMEOUT           // Support for overall task timeout 
+#define _TASK_OO_CALLBACKS
+
 #include <Arduino.h>
 #define AUDIO_CONTROL_TASK "AUDIO_CONTROL_TASK"
 #include "AudioFileSourceSPIFFS.h"
@@ -8,49 +17,49 @@
 #include "AudioOutputI2SNoDAC.h"
 #include <avr/pgmspace.h>
 
-class AudioControl {
+typedef std::function<void(void)> OnStopListener;
+
+class AudioControl: public Task {
 
   private:
+    OnStopListener listener = NULL;
     AudioGeneratorMP3 *mp3 = NULL;
     AudioFileSourceSPIFFS *file = NULL;
     AudioFileSourceID3 *id3 = NULL;
     AudioOutputI2SNoDAC *out = NULL;
-    bool stopped = false;
   public:
-    AudioControl() {
+    AudioControl(Scheduler* scheduler) : Task(TASK_IMMEDIATE , TASK_FOREVER, scheduler) {
     }
 
-    void play(char *filename, float soundVolume, void (*listener)()) {
-      stop();
+    void play(char *filename, float soundVolume, OnStopListener listener) {
+
       //audioLogger = &Serial;
       file = new AudioFileSourceSPIFFS(filename);
       id3 = new AudioFileSourceID3(file);
-      id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
+      //id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
       out = new AudioOutputI2SNoDAC();
       out->SetGain(soundVolume);
-
+      this->listener = listener;
       mp3 = new AudioGeneratorMP3();
       mp3->begin(id3, out);
-      stopped = false;
-      Tasks.framerate(AUDIO_CONTROL_TASK, 1000, [ = ] {
-        if (!stopped) {
-          if (mp3->isRunning()) {
-            if (!mp3->loop()) mp3->stop();
-          } else {
-            Serial.print("MP3 done\n");
-            stop();
-            if ( (listener != NULL))  {
-              listener();
-            }
-          }
-        }
-        else{
-          if (mp3 != NULL && mp3->isRunning()) {
-            mp3->stop();
-          }
-        }
+      restart();
+    }
 
-      });
+    void update() {
+      if (mp3->isRunning()) {
+        if (!mp3->loop()) mp3->stop();
+      } else {
+        Serial.print("MP3 done\n");
+        if ( (listener != NULL))  {
+          listener();
+        }
+        stop();
+      }
+    }
+
+    bool Callback() {
+      update();
+      return true;
     }
 
     // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
@@ -73,15 +82,17 @@ class AudioControl {
       Serial.printf("'\n");
       Serial.flush();
     }
+    void OnDisable() {
+      int i = getId();
+      Serial.print(millis()); Serial.print(":\t");
+      Serial.print("AudioControl: TaskID=");
+      Serial.println(i);
+      stop();
+    }
 
 
     void stop() {
-      Serial.println((String)"stopping Audio:" + Tasks.isRunning(AUDIO_CONTROL_TASK));
-
-      stopped = true;
-      if (Tasks.getTaskByName(AUDIO_CONTROL_TASK) != nullptr && Tasks.isRunning(AUDIO_CONTROL_TASK) == true)
-        Tasks.stop(AUDIO_CONTROL_TASK);
-
+      disable();
       if (NULL != file) {
         delete file;
         file = NULL;
@@ -102,6 +113,7 @@ class AudioControl {
         mp3 = NULL;
       }
 
+      listener = NULL;
     }
 };
 #endif

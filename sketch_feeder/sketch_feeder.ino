@@ -1,3 +1,17 @@
+
+#define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between tasks if no callback methods were invoked during the pass 
+#define _TASK_STATUS_REQUEST    // Compile with support for StatusRequest functionality - triggering tasks on status change events in addition to time only
+#define _TASK_WDT_IDS           // Compile with support for wdt control points and task ids
+#define _TASK_PRIORITY          // Support for layered scheduling priority
+#define _TASK_TIMEOUT           // Support for overall task timeout 
+#define _TASK_OO_CALLBACKS
+
+#define AUDIO_FEEDING "/feeding.mp3"
+#define AUDIO_START_UP "/miracle.mp3"
+#define LED_PIN D6
+#define MOTOR_PIN D5
+#define BUTTON_PIN D2
+
 #include <SceneManager.h>
 #include "Preferences.h"
 #include "LedControl.h"
@@ -10,6 +24,9 @@
 #include <ESP8266WiFi.h>
 #include <TaskManager.h>
 #include <Time.h>
+#include <TaskScheduler.h>
+
+
 
 #include <time.h>                       // time() ctime()
 #ifdef ESP8266M
@@ -17,20 +34,16 @@
 #endif
 #include "CronAlarms.h"
 
-#define AUDIO_FEEDING "/feeding.mp3"
-#define AUDIO_START_UP "/miracle.mp3"
-#define LED_PIN D6
-#define MOTOR_PIN D5
-#define BUTTON_PIN D2
 const char* ssid = "Feeder-Access-Point";
+Scheduler taskManager;
 
-LedControl led(LED_PIN);
-MotorControl motor(MOTOR_PIN);
-AudioControl audioControl;
-WifiManager wifiManager(ssid);
-NtpManager ntpManager;
+LedControl led(&taskManager, LED_PIN);
+MotorControl motor(&taskManager, MOTOR_PIN);
+AudioControl audioControl(&taskManager);
+WifiManager wifiManager(&taskManager, ssid);
+NtpManager ntpManager(&taskManager);
 ServerControl serverControl;
-
+bool firstUpdateTime = true;
 CronId alarms[dtNBR_ALARMS];
 
 Preferences preferences;
@@ -39,27 +52,13 @@ ClickButton button(BUTTON_PIN);
 bool first = true;
 
 void setupButton() {
-
   pinMode(BUTTON_PIN, INPUT);
-  Tasks.framerate(1000, [ = ] {
-    if (button.changed == 1) {
-      if (first == false) {
-        stopAllTasks();
-        if (button.clicks == -1) {
-          onCompositeFeeding();
-        } else if (button.clicks == -2) {
-          onLedTimerEvent();
-        }
-      }
-      first = false;
-    }
-  });
 }
 
 void connectToWifi() {
   Serial.println((String) "connectToWifi" + preferences.getWifiSsid());
   if (preferences.getWifiSsid() != NULL && preferences.getWifiSsid()[0] != '\0')
-    wifiManager.connectToWifi();
+    wifiManager.enable();
 }
 
 void stopFeedingAlarm() {
@@ -83,10 +82,10 @@ void onFeedingAlarm() {
 
 void stopAllTasks() {
   audioControl.stop();
-  led.off();
+  led.disable();
   motor.stop();
-  wifiManager.runLongTimeConnectingTask();
-  ntpManager.startLongTask();
+  //  ntpManager.restartDelayed();
+  //  wifiManager.restartDelayed();
 }
 void onCompositeFeeding() {
   Serial.println((String)"onCompositeFeeding");
@@ -120,18 +119,21 @@ void resetFeedingTasks() {
 
 }
 void setDeviceTime(unsigned long epochTime) {
+
   stopFeedingAlarm();
   Serial.println((String)"setDeviceTime epochTime... " + epochTime);
   setTime(epochTime);
 
   struct timeval tv;
-  tv.tv_sec =   epochTime;
+  tv.tv_sec = epochTime;
 
   settimeofday(&tv, NULL);
   resetFeedingTasks();
 }
 
 void onSetupConfig() {
+  Serial.println("OnSetupConfig");
+
   resetFeedingTasks();
   wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword());
   led.setup(preferences.getLedTurnOffDelay());
@@ -232,17 +234,28 @@ void showDeviceInfo() {
 void setup()
 {
   Serial.begin(115200);
+  WiFi.mode(WIFI_OFF);
 
   //showDeviceInfo();
-
   onSetupConfig();
-  audioControl.play(AUDIO_START_UP, preferences.getSoundVolume(), []() {
-    initialSetup();
-  });
+  initialSetup();
 }
+
+void onTimeUpdate(unsigned long epochTime) {
+  if (firstUpdateTime == true) {
+    firstUpdateTime = false;
+    audioControl.play(AUDIO_START_UP, preferences.getSoundVolume(), [ = ]() {
+      setDeviceTime(epochTime);
+    });
+  }
+  else {
+    setDeviceTime(epochTime);
+  }
+}
+
 void initialSetup() {
   setenv("TZ", "UTC-03:30", 0);
-  ntpManager.setOnTimeUpdateListener(setDeviceTime);
+  ntpManager.setOnTimeUpdateListener(onTimeUpdate);
 
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
     Serial.println();
@@ -250,7 +263,10 @@ void initialSetup() {
     Serial.println(wifiState);
 
     if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
-      ntpManager.start();
+      ntpManager.enable();
+    }
+    else {
+      ntpManager.disable();
     }
   });
 
@@ -262,18 +278,17 @@ void initialSetup() {
     stopAllTasks();
   });
   serverControl.setUploadListener([ = ](String filename) {
-    stopAllTasks();
     Serial.print((String)"filename uploaded:" + filename);
+    stopAllTasks();
 
     if (filename == AUDIO_FEEDING) {
-      onPlayFeedingAudioEvent(NULL);
+      //      onPlayFeedingAudioEvent(NULL);
     }
     else if (filename == CONFIG_FILE_PATH) {
       preferences.reload();
       onSetupConfig();
     }
   });
-
 
   connectToWifi();
   setupButton();
@@ -284,4 +299,18 @@ void loop()
   Tasks.update(); // automatically execute tasks
   Cron.delay(0); // wait one second between clock display
   serverControl.loop();
+  taskManager.execute();
+
+  if (button.changed == 1) {
+    if (first == false) {
+      stopAllTasks();
+      if (button.clicks == -1) {
+        onCompositeFeeding();
+      } else if (button.clicks == -2) {
+        onLedTimerEvent();
+      }
+    }
+    first = false;
+  }
+
 }
