@@ -45,6 +45,15 @@ class ServerControl {
       setupWifiApi();
       setupStaticPage();
       server->begin();
+      server->onNotFound([this]() {
+        server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
+        server->send(302, "text/plane", "");
+      }); //Android captive portal. Maybe not needed. Might be handled by notFound handler.
+      server->on("/generate_204", {
+        server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
+        server->send(302, "text/plane", "");
+      }); 
+
     }
 
     void setupStaticPage() {
@@ -126,8 +135,9 @@ class ServerControl {
       if (server->uri() != "/upload") {
         return;
       }
+      yield();
       HTTPUpload& upload = server->upload();
-      if (upload.status == UPLOAD_FILE_START) {        
+      if (upload.status == UPLOAD_FILE_START) {
         stopTasksListener();
         String filename = upload.filename;
         // Make sure paths always start with "/"

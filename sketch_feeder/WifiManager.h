@@ -32,7 +32,8 @@ class WifiManager: public Task  {
       Serial.println ( "WiFi On Disconnect." );
       setStatus(WIFI_STA_STATE_FAILED);
       WiFi.disconnect();
-      restart();
+      // chera bayad restart beshe?
+      // restart();
     }
   public:
     WifiManager(Scheduler* scheduler, String accessPointSsid) : Task(WIFI_MANAGER_TASK_SHORT_INTERVAL, TASK_FOREVER, scheduler) {

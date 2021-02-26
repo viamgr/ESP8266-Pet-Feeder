@@ -22,12 +22,9 @@
 #include "WifiManager.h"
 #include "NtpManager.h"
 #include <ESP8266WiFi.h>
-#include <TaskManager.h>
 #include <Time.h>
 #include <TaskScheduler.h>
-
-
-
+#include <DNSServer.h>
 #include <time.h>                       // time() ctime()
 #ifdef ESP8266M
 #include <sys/time.h>                   // struct timeval
@@ -50,6 +47,12 @@ Preferences preferences;
 
 ClickButton button(BUTTON_PIN);
 bool first = true;
+
+const byte DNS_PORT = 53;
+IPAddress apIP(192, 168, 4, 1);
+DNSServer dnsServer;
+ESP8266WebServer webServer(80);
+
 
 void setupButton() {
   pinMode(BUTTON_PIN, INPUT);
@@ -235,10 +238,23 @@ void setup()
 {
   Serial.begin(115200);
   WiFi.mode(WIFI_OFF);
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
   //showDeviceInfo();
   onSetupConfig();
   initialSetup();
+
+  // modify TTL associated  with the domain name (in seconds)
+  // default is 60 seconds
+  dnsServer.setTTL(300);
+  // set which return code will be used for all other domains (e.g. sending
+  // ServerFailure instead of NonExistentDomain will reduce number of queries
+  // sent by clients)
+  // default is DNSReplyCode::NonExistentDomain
+  dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
+
+  // start DNS server for a specific domain name
+  dnsServer.start(DNS_PORT, "*", apIP);
 }
 
 void onTimeUpdate(unsigned long epochTime) {
@@ -295,8 +311,9 @@ void initialSetup() {
 }
 void loop()
 {
+
+  dnsServer.processNextRequest();
   button.Update();
-  Tasks.update(); // automatically execute tasks
   Cron.delay(0); // wait one second between clock display
   serverControl.loop();
   taskManager.execute();
