@@ -16,12 +16,13 @@
 #include "Preferences.h"
 #include "LedControl.h"
 #include "MotorControl.h"
-#include "ClickButton.h"
 #include "AudioControl.h"
 #include "ServerControl.h"
 #include "WifiManager.h"
 #include "NtpManager.h"
+
 #include <ESP8266WiFi.h>
+#include <AwesomeClickButton.h>
 #include <Time.h>
 #include <TaskScheduler.h>
 #include <DNSServer.h>
@@ -37,31 +38,26 @@ Scheduler taskManager;
 LedControl led(&taskManager, LED_PIN);
 MotorControl motor(&taskManager, MOTOR_PIN);
 AudioControl audioControl(&taskManager);
-WifiManager wifiManager(&taskManager, ssid);
+WifiManager wifiManager(&taskManager);
 NtpManager ntpManager(&taskManager);
 ServerControl serverControl;
+AwesomeClickButton awesomeClickButton(BUTTON_PIN);
 bool firstUpdateTime = true;
 CronId alarms[dtNBR_ALARMS];
 
 Preferences preferences;
 
-ClickButton button(BUTTON_PIN);
-bool first = true;
 
 const byte DNS_PORT = 53;
 IPAddress apIP(192, 168, 4, 1);
 DNSServer dnsServer;
 ESP8266WebServer webServer(80);
 
-
-void setupButton() {
-  pinMode(BUTTON_PIN, INPUT);
-}
-
-void connectToWifi() {
-  Serial.println((String) "connectToWifi" + preferences.getWifiSsid());
-  if (preferences.getWifiSsid() != NULL && preferences.getWifiSsid()[0] != '\0')
-    wifiManager.enable();
+void turnOnAccessPoint() {
+  Serial.println((String) "turnOnAccessPoint:" + preferences.getAccessPointName() + " isAccessPointOn:" + preferences.isAccessPointOn());
+  if (preferences.isAccessPointOn()) {
+    wifiManager.turnOnAccessPoint();
+  }
 }
 
 void stopFeedingAlarm() {
@@ -138,7 +134,8 @@ void onSetupConfig() {
   Serial.println("OnSetupConfig");
 
   resetFeedingTasks();
-  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword());
+  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(),
+                    preferences.getAccessPointName(), preferences.isAccessPointOn(), preferences.isStationOn());
   led.setup(preferences.getLedTurnOffDelay());
 
 }
@@ -268,6 +265,36 @@ void onTimeUpdate(unsigned long epochTime) {
     setDeviceTime(epochTime);
   }
 }
+void shiftWifiState() {
+  if (preferences.isAccessPointOn() && preferences.isStationOn()) {
+    preferences.setStationOn(false);
+    wifiManager.turnOffStation();
+    preferences.setAccessPointOn(true);
+    wifiManager.turnOnAccessPoint();
+    Serial.println("Turn On Access Point and turn of station");
+  }
+  else if (preferences.isAccessPointOn() ) {
+    preferences.setAccessPointOn(false);
+    preferences.setStationOn(true);    
+    wifiManager.connectToStation();
+    wifiManager.turnOffAccessPoint();
+    Serial.println("Turn off access Point and turn on station");
+  }
+  else if (preferences.isStationOn() ) {
+    preferences.setStationOn(false);
+    preferences.setAccessPointOn(false);
+    Serial.println("Turn Off wifi");
+    wifiManager.turnOff();
+  }
+  else {
+    preferences.setAccessPointOn(true);
+    preferences.setStationOn(true);
+    wifiManager.connectToStation();
+    wifiManager.turnOnAccessPoint();
+    Serial.println("Turn on station and access point");
+  }
+  preferences.save();
+}
 
 void initialSetup() {
   setenv("TZ", "UTC-03:30", 0);
@@ -307,27 +334,26 @@ void initialSetup() {
   });
 
   connectToWifi();
-  setupButton();
+  turnOnAccessPoint();
+  awesomeClickButton.setOnClickListener([]() {
+    stopAllTasks();
+    onCompositeFeeding();
+  });
+  awesomeClickButton.setOnMultiClickListener([] (int count) {
+    stopAllTasks();
+    if (count == 2) {
+      onLedTimerEvent();
+    } else if (count == 3) {
+      shiftWifiState();
+    }
+  });
 }
 void loop()
 {
-
+  //wifiManager.doCommand(Serial.read());
   dnsServer.processNextRequest();
-  button.Update();
+  awesomeClickButton.update();
   Cron.delay(0); // wait one second between clock display
   serverControl.loop();
   taskManager.execute();
-
-  if (button.changed == 1) {
-    if (first == false) {
-      stopAllTasks();
-      if (button.clicks == -1) {
-        onCompositeFeeding();
-      } else if (button.clicks == -2) {
-        onLedTimerEvent();
-      }
-    }
-    first = false;
-  }
-
 }

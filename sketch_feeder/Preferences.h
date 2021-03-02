@@ -40,7 +40,7 @@ class Preferences
     int getLedTurnOffDelay() {
       return doc["ledTurnOffDelay"] | defaultLedTurnOffDelay;
     }
-    
+
     int getFeedingDuration() {
       return doc["feedingDuration"] | defaultFeedingDuration;
     }
@@ -49,6 +49,19 @@ class Preferences
     }
     int getLedState() {
       return doc["ledState"] | defaultLedState;
+    }
+
+    char* getAccessPointName() {
+      const char* ssid = doc["accessPointName"] | "Feeder-Access-Point";
+      return (char*)ssid;
+    }
+
+    boolean isAccessPointOn() {
+      return doc["isAccessPointOn"] | true;
+    }
+
+    boolean isStationOn() {
+      return doc["isStationOn"] | false;
     }
 
 
@@ -61,7 +74,7 @@ class Preferences
     void setWifiPassword(char* value) {
       doc["wifiPassword"] = value;
     }
-    
+
     void setFeedingDuration(int value) {
       doc["feedingDuration"] = value;
     }
@@ -82,6 +95,18 @@ class Preferences
     }
 
 
+    void setAccessPointName(char* value) {
+      doc["setAccessPointName"] = value;
+    }
+    
+    void setAccessPointOn(boolean value) {
+      doc["isAccessPointOn"] = value;
+    }
+    
+    void setStationOn(boolean value) {
+      doc["isStationOn"] = value;
+    }    
+    
     void save() {
       // Delete existing file, otherwise the configuration is appended to the file
       SPIFFS.remove(CONFIG_FILE_PATH);

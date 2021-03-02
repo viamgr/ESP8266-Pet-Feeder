@@ -1,8 +1,6 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 #include <ESP8266WiFi.h>
-#include <Arduino.h>
-#include <TaskManager.h>
 #define WIFI_MANAGER_TASK "WIFI_MANAGER_TASK"
 #define WIFI_MANAGER_TASK_LONG "WIFI_MANAGER_TASK_LONG"
 
@@ -11,96 +9,155 @@
 #define WIFI_STA_STATE_ESTABLISHED 2
 #define WIFI_STA_STATE_FAILED 4
 
-
-#define WIFI_MANAGER_TASK_LONG_INTERVAL 3 * 60 * 1000
-#define WIFI_MANAGER_TASK_SHORT_INTERVAL 1 * 1000
-#define WIFI_MANAGER_TASK_MAX_INTERVAL 5 * 60 * 1000
+#define DO(x...) Serial.println(F( #x )); x; break
 
 typedef std::function<void(int status)> WifiStatusListener;
 
-class WifiManager: public Task  {
+class WifiManager {
 
   private:
-    const int retryCount = 4;
+
+    IPAddress *staticip = new IPAddress(192, 168, 4, 1);
+    IPAddress *gateway = new IPAddress(192, 168, 4, 1);
+    IPAddress *subnet = new IPAddress(255, 255, 255, 0);
+
+    String accessPointSsid;
     String ssid;
     String password;
     uint8_t status;
+    boolean isStationOn = true;
+    boolean isAccessPointOn = true;
     WifiStatusListener wifiStatusListener = NULL;
-    WiFiEventHandler mDisConnectHandler;
+    WiFiEventHandler gotIpEventHandler, mDisConnectHandler;
 
     void onDisconnect() {
-      Serial.println ( "WiFi On Disconnect." );
+      Serial.println ( "WiFi On Disconnect." + WiFi.status()  );
       setStatus(WIFI_STA_STATE_FAILED);
-      WiFi.disconnect();
-      // chera bayad restart beshe?
-      // restart();
+
+    }
+    void onConnect() {
+      setStatus(WIFI_STA_STATE_ESTABLISHED);
+    }
+
+    void wiFiOff() {
+      wifi_station_disconnect();
+      wifi_set_opmode(NULL_MODE);
+      wifi_set_sleep_type(MODEM_SLEEP_T);
+      wifi_fpm_open();
+      //wifi_fpm_do_sleep(0xFFFFFFF);
+    }
+
+    void wiFiOn() {
+      wifi_fpm_do_wakeup();
+      wifi_fpm_close();
+      wifi_set_opmode(STATION_MODE);
+      wifi_station_connect();
     }
   public:
-    WifiManager(Scheduler* scheduler, String accessPointSsid) : Task(WIFI_MANAGER_TASK_SHORT_INTERVAL, TASK_FOREVER, scheduler) {
-      WiFi.softAP(accessPointSsid);
-      WiFi.setAutoConnect(false);
-      WiFi.setAutoReconnect(false);
+    WifiManager(Scheduler* scheduler) {
+      Serial.begin(115200);
+
+      gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
+      {
+        Serial.print("Station connected, IP: ");
+        Serial.println(WiFi.localIP());
+        this->onConnect();
+      });
+
       mDisConnectHandler = WiFi.onStationModeDisconnected([this](const WiFiEventStationModeDisconnected & event)
       {
         this->onDisconnect();
       });
     }
-    void setup(String ssid, String password) {
-      this->ssid = ssid;
-      this->password = password;
-      restartDelayed();
-    }
-    void setOnWifiStatusListener(const WifiStatusListener& listener) {
-      this->wifiStatusListener = listener;
+
+    void connectToStation() {
+      if (ssid != NULL && ssid != '\0' && ssid != "") {
+        doCommand('B');
+        isStationOn = true;
+      }
     }
 
-    bool OnEnable() {
-      Serial.println((String)"WifiManager OnEnable");
-      WiFi.mode(WIFI_AP_STA);
-      WiFi.begin(ssid, password);
-      return true;
+    void turnOffStation() {
+      if (isAccessPointOn) {
+        doCommand('1');
+      }
+      else {
+        doCommand('F');
+      }
+      isStationOn = false;
+    }
+
+    void turnOff() {
+      doCommand('F');
+      isAccessPointOn = false;
+      isStationOn = false;
+    }
+
+    void turnOffAccessPoint() {
+      if (isStationOn) {
+        doCommand('3');
+      }
+      else {
+        doCommand('F');
+      }
+      isAccessPointOn = false;
+    }
+
+    void turnOnAccessPoint() {
+      WiFi.softAP(accessPointSsid);
+      Serial.println((String) "accessPointSsid:" + accessPointSsid + ", isStationOn:" + isStationOn);
+
+      if (isStationOn) {
+        doCommand('2');
+      }
+      else {
+        doCommand('1');
+      }
+      isAccessPointOn = true;
+    }
+
+    void doCommand(char cmd) {
+      Serial.println((String) "doCommand:" + cmd);
+
+      switch (cmd) {
+        case 'F': DO(wiFiOff());
+        case 'N': DO(wiFiOn());
+        case '1': DO(WiFi.mode(WIFI_AP));
+        case '2': DO(WiFi.mode(WIFI_AP_STA));
+        case '3': DO(WiFi.mode(WIFI_STA));
+        case 'R': DO(if (((GPI >> 16) & 0xf) == 1) ESP.reset() /* else must hard reset */);
+        case 'd': DO(WiFi.disconnect());
+        case 'b': DO(WiFi.begin());
+        case 'B': DO(WiFi.begin(ssid, password));
+        case 'r': DO(WiFi.reconnect());
+        case 'c': DO(wifi_station_connect());
+        case 'a': DO(WiFi.setAutoReconnect(false));
+        case 'A': DO(WiFi.setAutoReconnect(true));
+        case 'n': DO(WiFi.setSleepMode(WIFI_NONE_SLEEP));
+        case 'l': DO(WiFi.setSleepMode(WIFI_LIGHT_SLEEP));
+        case 'm': DO(WiFi.setSleepMode(WIFI_MODEM_SLEEP));
+        case 'S': DO(WiFi.config(*this->staticip, *this->gateway, *this->subnet)); // use static address
+        case 's': DO(WiFi.config(0u, 0u, 0u));                // back to dhcp client
+      }
+
+    }
+
+    void setup(String ssid, String password, String accessPointSsid, boolean isStationOn, boolean isAccessPointOn) {
+      this->ssid = ssid;
+      this->password = password;
+      this->accessPointSsid = accessPointSsid;
+      this->isStationOn = isStationOn;
+      this->isAccessPointOn = isAccessPointOn;
+    }
+
+    void setOnWifiStatusListener(const WifiStatusListener& listener) {
+      this->wifiStatusListener = listener;
     }
 
     void setStatus(uint8_t value) {
       Serial.println((String)"WifiManager setStatus value:" + value + " old:" + status );
       if (wifiStatusListener != NULL && value != status) wifiStatusListener(value);
       status = value;
-    }
-
-    void update() {
-      if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("Connected... ");
-        setInterval(WIFI_MANAGER_TASK_LONG_INTERVAL);
-        restartDelayed(WIFI_MANAGER_TASK_LONG_INTERVAL);
-        setStatus(WIFI_STA_STATE_ESTABLISHED);
-
-      }
-      else {
-        unsigned long aInterval = WIFI_MANAGER_TASK_SHORT_INTERVAL * getRunCounter();
-        if (aInterval > WIFI_MANAGER_TASK_MAX_INTERVAL) {
-          aInterval = WIFI_MANAGER_TASK_MAX_INTERVAL;
-        }
-        Serial.println((String)"Failed connecting to wifi, Retry after:" + aInterval);
-
-        setInterval(aInterval);
-        setStatus(WIFI_STA_STATE_CONNECTING);
-
-      }
-    }
-
-    void OnDisable() {
-      int i = getId();
-      Serial.print(millis()); Serial.print(":\t");
-      Serial.print("WifiManager: TaskID=");
-      Serial.println(i);
-      WiFi.disconnect();
-      //      mDisConnectHandler = NULL;
-    }
-
-    bool Callback() {
-      Serial.println((String)"WifiManager Callback");
-      update();
-      return true;
     }
 
 };
