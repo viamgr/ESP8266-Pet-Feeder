@@ -1,8 +1,6 @@
 #include <Time.h>
 #include <time.h>                       // time() ctime()
-#ifdef ESP8266M
-#include <sys/time.h>                   // struct timeval
-#endif
+
 #include "MotorControl.h"
 #include "CronAlarms.h"
 
@@ -30,7 +28,6 @@ void stopFeedingAlarm() {
 }
 
 void onFeedingAlarm() {
-  Serial.println((String)"getTime " + now());
   JsonArray data = preferences.getAlarms();
   for (int x = 0; x < data.size(); x++)  {
     const char *time = data[x];

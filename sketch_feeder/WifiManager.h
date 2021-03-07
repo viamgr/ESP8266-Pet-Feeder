@@ -17,7 +17,7 @@ class WifiManager {
 
   private:
 
-    DNSServer *dnsServer;
+    DNSServer *dnsServer = new DNSServer();
     IPAddress *staticip;
     IPAddress *gateway ;
     IPAddress *subnet;
@@ -76,6 +76,8 @@ class WifiManager {
     }
 
     void connectToStation() {
+      Serial.print("connectToStation, IP: "+ssid);
+
       if (ssid != NULL && ssid != '\0' && ssid != "") {
         doCommand('B');
         isStationOn = true;
