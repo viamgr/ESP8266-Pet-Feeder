@@ -1,6 +1,5 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
-#include <ESP8266WiFi.h>
 #define WIFI_MANAGER_TASK "WIFI_MANAGER_TASK"
 #define WIFI_MANAGER_TASK_LONG "WIFI_MANAGER_TASK_LONG"
 
@@ -8,6 +7,7 @@
 #define WIFI_STA_STATE_CONNECTING 1
 #define WIFI_STA_STATE_ESTABLISHED 2
 #define WIFI_STA_STATE_FAILED 4
+#include <DNSServer.h>
 
 #define DO(x...) Serial.println(F( #x )); x; break
 
@@ -17,10 +17,11 @@ class WifiManager {
 
   private:
 
-    IPAddress *staticip = new IPAddress(192, 168, 4, 1);
-    IPAddress *gateway = new IPAddress(192, 168, 4, 1);
-    IPAddress *subnet = new IPAddress(255, 255, 255, 0);
-
+    DNSServer *dnsServer;
+    IPAddress *staticip;
+    IPAddress *gateway ;
+    IPAddress *subnet;
+    const byte DNS_PORT = 53;
     String accessPointSsid;
     String ssid;
     String password;
@@ -54,8 +55,12 @@ class WifiManager {
       wifi_station_connect();
     }
   public:
-    WifiManager(Scheduler* scheduler) {
-      Serial.begin(115200);
+    WifiManager(IPAddress* staticip, IPAddress* gateway, IPAddress* subnet) {
+      WiFi.mode(WIFI_OFF);
+
+      this->staticip = staticip;
+      this->gateway = gateway;
+      this->subnet = subnet;
 
       gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
       {
@@ -136,7 +141,7 @@ class WifiManager {
         case 'n': DO(WiFi.setSleepMode(WIFI_NONE_SLEEP));
         case 'l': DO(WiFi.setSleepMode(WIFI_LIGHT_SLEEP));
         case 'm': DO(WiFi.setSleepMode(WIFI_MODEM_SLEEP));
-        case 'S': DO(WiFi.config(*this->staticip, *this->gateway, *this->subnet)); // use static address
+        case 'S': DO(WiFi.config(*staticip, *gateway, *subnet)); // use static address
         case 's': DO(WiFi.config(0u, 0u, 0u));                // back to dhcp client
       }
 
@@ -160,5 +165,23 @@ class WifiManager {
       status = value;
     }
 
+    void startDns() {
+      WiFi.softAPConfig(*staticip, *gateway, *subnet);
+
+      // modify TTL associated  with the domain name (in seconds)
+      // default is 60 seconds
+      dnsServer->setTTL(300);
+      // set which return code will be used for all other domains (e.g. sending
+      // ServerFailure instead of NonExistentDomain will reduce number of queries
+      // sent by clients)
+      // default is DNSReplyCode::NonExistentDomain
+      dnsServer->setErrorReplyCode(DNSReplyCode::ServerFailure);
+
+      // start DNS server for a specific domain name
+      dnsServer->start(DNS_PORT, "*", *staticip);
+    }
+    void update() {
+      dnsServer->processNextRequest();
+    }
 };
 #endif

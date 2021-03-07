@@ -27,11 +27,16 @@ class AudioControl: public Task {
     AudioFileSourceSPIFFS *file = NULL;
     AudioFileSourceID3 *id3 = NULL;
     AudioOutputI2SNoDAC *out = NULL;
+    float soundVolume = 3.99;
   public:
     AudioControl(Scheduler* scheduler) : Task(TASK_IMMEDIATE , TASK_FOREVER, scheduler) {
     }
 
-    void play(char *filename, float soundVolume, OnStopListener listener) {
+    void setSoundVolume(float soundVolume) {
+      this->soundVolume = soundVolume;
+    }
+
+    void play(char *filename, OnStopListener listener) {
 
       //audioLogger = &Serial;
       file = new AudioFileSourceSPIFFS(filename);
