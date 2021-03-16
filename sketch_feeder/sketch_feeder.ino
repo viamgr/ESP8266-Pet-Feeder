@@ -44,14 +44,14 @@ void setup()
 void initialSetup() {
   initNtp();
   initWifiManager();
-  //initServer();
+  initServer();
   connectToWifi();
- // turnOnAccessPoint();
- // initClickButton();
+  turnOnAccessPoint();
+  initClickButton();
   Serial.println("initialSetup");
 }
 void loop()
-{  
+{
   updateWifiManager();
   updateClickButton();
   updateFeedingLoop();

@@ -1,31 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ESP32 Web Server</title>
+  <title>Feeder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
-  <script>
-	var fallbackToStore = function() {
-		//window.location.replace('market://details?id=com.myapp.package');
-	};
-	var openApp = function() {
-		//window.location.replace('intent://com.viam.feeder#Intent;scheme=feederex;package=com.viam.feeder;end');
-	};
-	var triggerAppOpen = function() {
-		openApp();
-		setTimeout(fallbackToStore, 1500);
-	};
-	window.onload = (function(){
-	
-		triggerAppOpen();
-	});
-  
-  </script>
+ 
 </head>
 <body>
+  <h1>Automatic Pet Feeder</h1>
+  <hr/>
+  <p>Made by <b>Vahid Moradi</b>. Phone: +989375302581 Email: zvm4zvm@gmail.com</p>
 
-  <h1>ESP32 Web Server</h1>
-  <p>EPOCH: <strong> %EPOCH%</strong></p>
-  <a href="intent://com.viam.feeder#Intent;scheme=feederex;package=com.viam.feeder;end">OPEN</a>
 </body>
 </html>

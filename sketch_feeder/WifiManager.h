@@ -168,6 +168,8 @@ class WifiManager {
     }
 
     void startDns() {
+      
+      Serial.println("startDns");
       WiFi.softAPConfig(*staticip, *gateway, *subnet);
 
       // modify TTL associated  with the domain name (in seconds)

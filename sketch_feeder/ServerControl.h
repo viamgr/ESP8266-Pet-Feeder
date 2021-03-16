@@ -45,11 +45,11 @@ class ServerControl {
       setupWifiApi();
       setupStaticPage();
       server->begin();
-//      server->onNotFound([this]() {
-//        server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
-//        server->send(302, "text/plane", "");
-//      }); 
-
+      server->onNotFound([this]() {
+        server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
+        server->send(302, "text/plane", "");
+      }); 
+  
     }
 
     void setupStaticPage() {

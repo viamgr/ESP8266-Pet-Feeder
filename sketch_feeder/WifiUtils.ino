@@ -8,16 +8,14 @@ void updateWifiManager() {
 
 void initWifiManager() {
 
-  wifiManager.startDns();
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
     Serial.println();
     Serial.print("wifiState:");
     Serial.println(wifiState);
 
     if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
-      downloadFile();
-
       ntpManager.enable();
+      wifiManager.startDns();
     }
     else {
       ntpManager.disable();
