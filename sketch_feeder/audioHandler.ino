@@ -8,7 +8,7 @@ AudioControl audioControl(&taskManager);
 void stopAudio(){	
   audioControl.stop();
 }
-void playAudio(char *filename,void (*listener)()){
+void playAudio(const char *filename,void (*listener)()){
   Serial.println((String) "onPlayFeedingAudioEventedingEvent");
 
   stopAllTasks();

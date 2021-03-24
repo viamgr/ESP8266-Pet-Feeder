@@ -1,7 +1,6 @@
 #pragma once
 #ifndef ARDUINO_PREFERENCES_H // change depending on your class
 #define ARDUINO_PREFERENCES_H // change depending on your class
-#include <TaskManager.h>
 #include <FS.h>   // Include the SPIFFS library
 #include <ArduinoJson.h>
 #define defaultFeedingDuration 5000
@@ -11,6 +10,7 @@
 #define ledStateFeedingOn 2
 #define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
+#define DEFAULT_WIFI_MODE WIFI_MODE_AP
 #define MAX_ALARM_SIZE 10
 #define CONFIG_FILE_PATH "/config.json"
 
@@ -56,12 +56,8 @@ class Preferences
       return (char*)ssid;
     }
 
-    boolean isAccessPointOn() {
-      return doc["isAccessPointOn"] | true;
-    }
-
-    boolean isStationOn() {
-      return doc["isStationOn"] | false;
+    uint8_t getWifiMode() {
+      return doc["wifiMode"] | DEFAULT_WIFI_MODE;
     }
 
 
@@ -98,15 +94,11 @@ class Preferences
     void setAccessPointName(char* value) {
       doc["setAccessPointName"] = value;
     }
-    
-    void setAccessPointOn(boolean value) {
-      doc["isAccessPointOn"] = value;
+
+    void setWifiMode(uint8_t value) {
+      doc["wifiMode"] = value;
     }
-    
-    void setStationOn(boolean value) {
-      doc["isStationOn"] = value;
-    }    
-    
+
     void save() {
       // Delete existing file, otherwise the configuration is appended to the file
       SPIFFS.remove(CONFIG_FILE_PATH);

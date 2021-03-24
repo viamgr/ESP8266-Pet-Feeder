@@ -7,9 +7,11 @@
 #define WIFI_STA_STATE_CONNECTING 1
 #define WIFI_STA_STATE_ESTABLISHED 2
 #define WIFI_STA_STATE_FAILED 4
-#include <DNSServer.h>
 
-#define DO(x...) Serial.println(F( #x )); x; break
+#define WIFI_MODE_OFF 0
+#define WIFI_MODE_AP 1
+#define WIFI_MODE_STA 2
+#define WIFI_MODE_AP_STA 3
 
 typedef std::function<void(int status)> WifiStatusListener;
 
@@ -17,17 +19,12 @@ class WifiManager {
 
   private:
 
-    DNSServer *dnsServer = new DNSServer();
     IPAddress *staticip;
-    IPAddress *gateway ;
-    IPAddress *subnet;
-    const byte DNS_PORT = 53;
     String accessPointSsid;
     String ssid;
     String password;
     uint8_t status;
-    boolean isStationOn = true;
-    boolean isAccessPointOn = true;
+    uint8_t mode = true;
     WifiStatusListener wifiStatusListener = NULL;
     WiFiEventHandler gotIpEventHandler, mDisConnectHandler;
 
@@ -40,7 +37,7 @@ class WifiManager {
       setStatus(WIFI_STA_STATE_ESTABLISHED);
     }
 
-    void wiFiOff() {
+    void turnOff() {
       wifi_station_disconnect();
       wifi_set_opmode(NULL_MODE);
       wifi_set_sleep_type(MODEM_SLEEP_T);
@@ -48,19 +45,22 @@ class WifiManager {
       //wifi_fpm_do_sleep(0xFFFFFFF);
     }
 
-    void wiFiOn() {
-      wifi_fpm_do_wakeup();
-      wifi_fpm_close();
-      wifi_set_opmode(STATION_MODE);
-      wifi_station_connect();
+    void beginStation() {
+      Serial.println("beginStation, IP: " + ssid);
+
+      if (ssid != NULL && ssid != '\0' && ssid != "") {
+        WiFi.begin(ssid, password);
+      }
+
+      Serial.println("beginStation finished ");
+
     }
+
   public:
-    WifiManager(IPAddress* staticip, IPAddress* gateway, IPAddress* subnet) {
+    WifiManager(IPAddress* staticip) {
       WiFi.mode(WIFI_OFF);
 
       this->staticip = staticip;
-      this->gateway = gateway;
-      this->subnet = subnet;
 
       gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
       {
@@ -74,87 +74,26 @@ class WifiManager {
         this->onDisconnect();
       });
     }
+    //
+    //    void connectToStation() {
+    //      if (mode == WIFI_MODE_OFF || mode == WIFI_MODE_STA ) {
+    //        setMode(WIFI_MODE_STA);
+    //        disableAp();
+    //      } else if (mode == WIFI_MODE_AP) {
+    //        setMode(WIFI_MODE_AP_STA);
+    //      }
+    //      beginStation();
+    //    }
 
-    void connectToStation() {
-      Serial.print("connectToStation, IP: "+ssid);
-
-      if (ssid != NULL && ssid != '\0' && ssid != "") {
-        doCommand('B');
-        isStationOn = true;
-      }
-    }
-
-    void turnOffStation() {
-      if (isAccessPointOn) {
-        doCommand('1');
-      }
-      else {
-        doCommand('F');
-      }
-      isStationOn = false;
-    }
-
-    void turnOff() {
-      doCommand('F');
-      isAccessPointOn = false;
-      isStationOn = false;
-    }
-
-    void turnOffAccessPoint() {
-      if (isStationOn) {
-        doCommand('3');
-      }
-      else {
-        doCommand('F');
-      }
-      isAccessPointOn = false;
-    }
-
-    void turnOnAccessPoint() {
-      WiFi.softAP(accessPointSsid);
-      Serial.println((String) "accessPointSsid:" + accessPointSsid + ", isStationOn:" + isStationOn);
-
-      if (isStationOn) {
-        doCommand('2');
-      }
-      else {
-        doCommand('1');
-      }
-      isAccessPointOn = true;
-    }
-
-    void doCommand(char cmd) {
-      Serial.println((String) "doCommand:" + cmd);
-
-      switch (cmd) {
-        case 'F': DO(wiFiOff());
-        case 'N': DO(wiFiOn());
-        case '1': DO(WiFi.mode(WIFI_AP));
-        case '2': DO(WiFi.mode(WIFI_AP_STA));
-        case '3': DO(WiFi.mode(WIFI_STA));
-        case 'R': DO(if (((GPI >> 16) & 0xf) == 1) ESP.reset() /* else must hard reset */);
-        case 'd': DO(WiFi.disconnect());
-        case 'b': DO(WiFi.begin());
-        case 'B': DO(WiFi.begin(ssid, password));
-        case 'r': DO(WiFi.reconnect());
-        case 'c': DO(wifi_station_connect());
-        case 'a': DO(WiFi.setAutoReconnect(false));
-        case 'A': DO(WiFi.setAutoReconnect(true));
-        case 'n': DO(WiFi.setSleepMode(WIFI_NONE_SLEEP));
-        case 'l': DO(WiFi.setSleepMode(WIFI_LIGHT_SLEEP));
-        case 'm': DO(WiFi.setSleepMode(WIFI_MODEM_SLEEP));
-        case 'S': DO(WiFi.config(*staticip, *gateway, *subnet)); // use static address
-        case 's': DO(WiFi.config(0u, 0u, 0u));                // back to dhcp client
-      }
-
-    }
-
-    void setup(String ssid, String password, String accessPointSsid, boolean isStationOn, boolean isAccessPointOn) {
+    void setup(String ssid, String password, String accessPointSsid, uint8_t mode) {
       this->ssid = ssid;
       this->password = password;
       this->accessPointSsid = accessPointSsid;
-      this->isStationOn = isStationOn;
-      this->isAccessPointOn = isAccessPointOn;
+      this->mode = mode;
+    }
+
+    uint8_t getMode() {
+      return this->mode;
     }
 
     void setOnWifiStatusListener(const WifiStatusListener& listener) {
@@ -167,23 +106,74 @@ class WifiManager {
       status = value;
     }
 
-    void startDns() {
-      WiFi.softAPConfig(*staticip, *gateway, *subnet);
-
-      // modify TTL associated  with the domain name (in seconds)
-      // default is 60 seconds
-      dnsServer->setTTL(300);
-      // set which return code will be used for all other domains (e.g. sending
-      // ServerFailure instead of NonExistentDomain will reduce number of queries
-      // sent by clients)
-      // default is DNSReplyCode::NonExistentDomain
-      dnsServer->setErrorReplyCode(DNSReplyCode::ServerFailure);
-
-      // start DNS server for a specific domain name
-      dnsServer->start(DNS_PORT, "*", *staticip);
+    void enableAp() {
+      Serial.println((String) "accessPointSsid:" + accessPointSsid );
+      WiFi.softAP(accessPointSsid);
     }
-    void update() {
-      dnsServer->processNextRequest();
+    void disableAp() {
+      WiFi.softAPdisconnect(true);
+    }
+    void setMode(uint8_t mode) {
+      this->mode = mode;
+      if (mode == WIFI_MODE_AP_STA) {
+        Serial.println("Turn on station and access point");
+
+        WiFi.mode(WIFI_AP_STA);
+
+        beginStation();
+        enableAp();
+      }
+      else if (mode == WIFI_MODE_AP) {
+        Serial.println("Turn On Access Point and turn of station");
+
+        WiFi.mode(WIFI_AP);
+        enableAp();
+      }
+      else if (mode == WIFI_MODE_STA) {
+        Serial.println("Turn off access Point and turn on station");
+        WiFi.mode(WIFI_STA);
+        disableAp();
+        beginStation();
+      }
+      else {
+        Serial.println("Turn Off wifi");
+        WiFi.mode(WIFI_OFF);
+
+        disableAp();
+        turnOff();
+
+      }
+
+    }
+
+    void start() {
+      setMode(mode);
+    }
+
+    String getWifiList() {
+      String json = "[";
+      int n = WiFi.scanComplete();
+      if (n == -2) {
+        WiFi.scanNetworks(true);
+      } else if (n) {
+        for (int i = 0; i < n; ++i) {
+          if (i != 0) json += ",";
+          json += "{";
+          //            json += "\"rssi\":" + String(WiFi.RSSI(i));
+          json += "\"ssid\":\"" + WiFi.SSID(i) + "\"";
+          json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
+          //json += ",\"channel\":" + String(WiFi.channel(i));
+          json += ",\"secure\":" + String(WiFi.encryptionType(i));
+          //json += ",\"hidden\":" + String(WiFi.isHidden(i) ? "true" : "false");
+          json += "}";
+        }
+        WiFi.scanDelete();
+        if (WiFi.scanComplete() == -2) {
+          WiFi.scanNetworks(true);
+        }
+      }
+      json += "]";
+      return json;
     }
 };
 #endif

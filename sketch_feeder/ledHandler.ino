@@ -21,3 +21,7 @@ void onLedTimerEvent() {
 void turnOnLed(){
   led.on();
 }
+
+void turnOffLed(){  
+  led.off();
+}

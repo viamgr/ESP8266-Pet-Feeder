@@ -1,10 +1,12 @@
-#include "NtpManager.h"
 #include <TaskScheduler.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 
 NtpManager ntpManager(getScheduler());
 
+NtpManager* getNtpManager() {
+  return &ntpManager;
+}
 bool firstUpdateTime = true;
 
 void initNtp() {
@@ -33,4 +35,7 @@ void setDeviceTime(unsigned long epochTime) {
 
   settimeofday(&tv, NULL);
   resetFeedingTasks();
+}
+String getDeviceTime() {
+  return String(now());
 }

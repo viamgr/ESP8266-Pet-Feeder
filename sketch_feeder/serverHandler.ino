@@ -3,9 +3,9 @@
 
 ServerControl serverControl;
 
-void initServer(){
- 
- serverControl.setEventListener(eventCallback);
+void initServer() {
+
+  serverControl.setEventListener(eventCallback);
   serverControl.setOnSetStatusListener(setStatusCallback);
   serverControl.setOnGetStatusListener(getStatusCallback);
   serverControl.setStopTasksListener([ = ]() {
@@ -24,7 +24,7 @@ void initServer(){
     }
   });
 }
-void updateServerControl(){	
+void updateServerControl() {
   serverControl.loop();
 }
 
@@ -35,20 +35,20 @@ void setStatusCallback(String key, String value) {
 
 String getStatusCallback(String key) {
   if (key == "STATUS_TIME")
-    return String(now());
+    return getDeviceTime();
 }
 
 void eventCallback(String name) {
   stopAllTasks();
   Serial.println((String)"name " + name);
   if (name == "EVENT_FEEDING")
-    onFeedingEvent(NULL);
+    onFeedingEvent();
   else if (name == "EVENT_LED_TIMER")
     onLedTimerEvent();
   else if (name == "EVENT_PLAY_FEEDING_AUDIO")
     onPlayFeedingAudioEvent();
   else if (name == "EVENT_WIFI_CONNECT")
-    connectToWifi();
+    restartWifi();
   else if (name == "EVENT_COMPOSITE_FEEDING")
     onCompositeFeeding();
   //  else if (key == "SETTING_SET_TIME")

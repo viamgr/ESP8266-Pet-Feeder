@@ -45,9 +45,9 @@ void onCompositeFeeding() {
   });
 
 }
-void onFeedingEvent(void (*listener)()) {
+void onFeedingEvent() {
   Serial.println((String) "onFeedingEvent");
-  motor.rotate(preferences.getFeedingDuration(), listener);
+  motor.rotate(preferences.getFeedingDuration(), NULL);
 }
 void onPlayFeedingAudioEvent() { 
   playAudio(AUDIO_FEEDING,NULL);

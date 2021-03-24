@@ -9,6 +9,16 @@ unsigned long string_to_long (String number)
   //Serial.println(result);
   return result;
 }
+unsigned int string_to_int (String number)
+{
+  number = number + ' ';
+  char buf[number.length()];
+  //Serial.println(number);
+  number.toCharArray(buf, number.length());
+  unsigned int result = atoi(buf);
+  //Serial.println(result);
+  return result;
+}
 
 void showDeviceInfo() {
 

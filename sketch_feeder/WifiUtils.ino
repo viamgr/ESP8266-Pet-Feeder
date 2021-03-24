@@ -1,8 +1,11 @@
 #include "WifiManager.h"
-WifiManager wifiManager( &staticip, &gateway, &subnet);
+WifiManager wifiManager(&staticip);
+
+WifiManager* getWifiManager() {
+  return &wifiManager;
+}
 
 void updateWifiManager() {
-  wifiManager.update();
 
 }
 
@@ -14,60 +17,41 @@ void initWifiManager() {
     Serial.println(wifiState);
 
     if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
-      ntpManager.enable();
-      wifiManager.startDns();
+      getNtpManager()->enable();
     }
     else {
-      ntpManager.disable();
+      getNtpManager()->disable();
     }
   });
 
-}
-void connectToWifi() {
-  Serial.println((String) "connectToWifi:" + preferences.getWifiSsid() + ", pass:" + preferences.getWifiPassword() + " isStationOn:" + preferences.isStationOn());
-  wifiManager.connectToStation();
 
 }
-
-
-void turnOnAccessPoint() {
-  Serial.println((String) "turnOnAccessPoint:" + preferences.getAccessPointName() + " isAccessPointOn:" + preferences.isAccessPointOn());
-  wifiManager.turnOnAccessPoint();
+void restartWifi() {
+  Serial.println("restartWifi:");
+  wifiManager.start();
 }
 
-
-void shiftWifiState() {
-  if (preferences.isAccessPointOn() && preferences.isStationOn()) {
-    preferences.setStationOn(false);
-    wifiManager.turnOffStation();
-    preferences.setAccessPointOn(true);
-    wifiManager.turnOnAccessPoint();
-    Serial.println("Turn On Access Point and turn of station");
-  }
-  else if (preferences.isAccessPointOn() ) {
-    preferences.setAccessPointOn(false);
-    preferences.setStationOn(true);
-    wifiManager.connectToStation();
-    wifiManager.turnOffAccessPoint();
-    Serial.println("Turn off access Point and turn on station");
-  }
-  else if (preferences.isStationOn() ) {
-    preferences.setStationOn(false);
-    preferences.setAccessPointOn(false);
-    Serial.println("Turn Off wifi");
-    wifiManager.turnOff();
-  }
-  else {
-    preferences.setAccessPointOn(true);
-    preferences.setStationOn(true);
-    wifiManager.connectToStation();
-    wifiManager.turnOnAccessPoint();
-    Serial.println("Turn on station and access point");
-  }
+void saveWifiMode(uint8_t mode) {
+  Serial.println((String) "setWifiMode:" + mode);
+  preferences.setWifiMode(mode);
   preferences.save();
 }
-void setupWifi() {
 
+void shiftWifiState() {
+  saveWifiMode((preferences.getWifiMode() + 1) % 4);
+  setupWifi();
+  restartWifi();
+}
+
+void setupWifi() {
+  Serial.println((String) "setupWifi:" + preferences.getWifiMode());
   wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(),
-                    preferences.getAccessPointName(), preferences.isAccessPointOn(), preferences.isStationOn());
+                    preferences.getAccessPointName(), preferences.getWifiMode());
+  restartWifi();
+  callDnsManagerAboutWifiConfigChanged();
+  callSocketAboutWifiConfigChanged();
+}
+
+String getWifiList() {
+  return wifiManager.getWifiList();
 }

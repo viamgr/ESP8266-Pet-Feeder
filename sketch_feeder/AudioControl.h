@@ -36,7 +36,7 @@ class AudioControl: public Task {
       this->soundVolume = soundVolume;
     }
 
-    void play(char *filename, OnStopListener listener) {
+    void play(const char *filename, OnStopListener listener) {
 
       //audioLogger = &Serial;
       file = new AudioFileSourceSPIFFS(filename);
