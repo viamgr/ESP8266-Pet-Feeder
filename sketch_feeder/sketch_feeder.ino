@@ -13,6 +13,7 @@
 #include "Preferences.h"
 
 String deviceId = "Feeder1";
+String aVariable = "saveFilename";
 
 IPAddress staticip(192, 168, 4, 1);
 IPAddress gateway(192, 168, 4, 1);
@@ -47,6 +48,7 @@ void setup()
 {
   setenv("TZ", "UTC-03:30", 0);
   Serial.begin(115200);
+  showDeviceInfo();
   onSetupConfig();
   initialSetup();
 

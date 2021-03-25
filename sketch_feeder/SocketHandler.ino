@@ -2,7 +2,8 @@
 
 #define _CHUNK_SIZE 15360 //15*1024
 WebSocketsClient* webSocket = NULL;
-File* tempFile = NULL;
+
+
 unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
@@ -91,7 +92,7 @@ int totalWrittenBytes = 0;
 void sendSliceMessage() {
 
   if (totalWrittenBytes < totalFileSize) {
-    int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize) + totalWrittenBytes;
+    int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize - totalWrittenBytes) + totalWrittenBytes;
     String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}}";
     webSocket->sendTXT(message);
   }
@@ -100,18 +101,23 @@ void sendSliceMessage() {
   }
 }
 void sendFailedSaveMessage() {
-  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"name\":" + String(tempFile->name()) + ",\"size\":" + String(totalWrittenBytes) + "}}";
+  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"name\":\"" + String(aVariable) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
   webSocket->sendTXT(message);
 }
 void writeFile(uint8_t * &payload, size_t length) {
-  int bytesWritten = tempFile->write(payload, length);
+  File writingFile = SPIFFS.open(aVariable, "a");
+
+  int bytesWritten = writingFile.write(payload, length);
   if (bytesWritten == 0) {
     sendFailedSaveMessage();
+    USE_SERIAL.println((String)"[WSc] ------------------- failed to write : " + bytesWritten);
+
   }
   else {
     totalWrittenBytes += bytesWritten;
     sendSliceMessage();
   }
+  writingFile.close();
 }
 
 void sendBinary(String filename) {
@@ -143,29 +149,25 @@ void sendBinary(String filename) {
     file.close();
   }
 }
-void onStartSaveFile(StaticJsonDocument<500> &doc) {
-  const char* filename = doc["message"]["name"];
-  String file = "/upload/" + String(filename);
-  totalFileSize = doc["message"]["size"];
-  tempFile = new File(SPIFFS.open(file, "w"));
-  USE_SERIAL.println((String)"[WSc] open :" + tempFile->name());
+void onStartSaveFile() {
+  USE_SERIAL.println((String)"[WSc] open :" + aVariable);
+  String file = "/upload/" + String(aVariable);
+  USE_SERIAL.println((String)"[WSc] openfile :" + file);
   totalWrittenBytes = 0;
   sendSliceMessage();
 }
 void onFinishSaveFile() {
-  if (tempFile == NULL) return;
   USE_SERIAL.printf("[WSc] close file");
-  String pathTo = tempFile->name();
-  unsigned int fileSize = tempFile->size();
-  String fullPath = tempFile->name();
+  String pathTo = aVariable;
+  File writingFile = SPIFFS.open(aVariable, "r");
+  unsigned int fileSize = writingFile.size();
+  writingFile.close();
+  String fullPath = aVariable;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
   webSocket->sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
-  SPIFFS.remove(fullPath);
+  SPIFFS.remove(pathTo);
   SPIFFS.rename(fullPath, pathTo);
-  tempFile->close();
-  tempFile = NULL;
-  delete tempFile;
 }
 void onGetTime() {
   String deviceTime = getDeviceTime();
@@ -184,7 +186,10 @@ void handleServerText(StaticJsonDocument<500> &doc) {
   String stringMessageKey = messageKey;
   USE_SERIAL.printf("[WSc] messageKey : %s\n", messageKey);
   if (stringMessageKey == "file:send:start") {
-    onStartSaveFile(doc);
+    String filename = doc["message"]["name"];
+    aVariable = "/upload/" + filename;
+    totalFileSize = doc["message"]["size"];
+    onStartSaveFile();
   } if (stringMessageKey == "file:send:finish") {
     onFinishSaveFile();
   } else if (stringMessageKey == "file:request") {
