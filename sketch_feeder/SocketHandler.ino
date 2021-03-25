@@ -1,6 +1,7 @@
 #include <WebSocketsClient.h>
 
 #define _CHUNK_SIZE 15360 //15*1024
+#define _SEND_CHUNK_SIZE 512
 WebSocketsClient webSocket;
 
 unsigned int totalFileSize = 0;
@@ -36,7 +37,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       }
       break;
     case WStype_TEXT:
-//      USE_SERIAL.printf("[WSc] get text: %s\n", payload);
+      //      USE_SERIAL.printf("[WSc] get text: %s\n", payload);
       parseText(payload, length);
       // send message to server
       // webSocket.sendTXT("message here");
@@ -50,21 +51,21 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_PING:
       // pong will be send automatically
-//      USE_SERIAL.printf("[WSc] get ping\n");
+      //      USE_SERIAL.printf("[WSc] get ping\n");
       break;
     case WStype_PONG:
       // answer to a ping we send
-//      USE_SERIAL.printf("[WSc] get pong\n");
+      //      USE_SERIAL.printf("[WSc] get pong\n");
       break;
   }
 }
 void stopSocket() {
   webSocket.disconnect();
-//  delete webSocket;
+  //  delete webSocket;
 }
 
 void startSocket() {
-//  webSocket = new WebSocketsClient();
+  //  webSocket = new WebSocketsClient();
   // server address, port and URL
   webSocket.begin("192.168.1.100", 4200, "/");
 
@@ -92,7 +93,7 @@ void sendSliceMessage() {
 
   if (totalWrittenBytes < totalFileSize) {
     int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize - totalWrittenBytes) + totalWrittenBytes;
-    String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}}";
+    String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}}";
     webSocket.sendTXT(message);
   }
   else {
@@ -100,17 +101,18 @@ void sendSliceMessage() {
   }
 }
 void sendFailedSaveMessage() {
-  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"name\":\"" + String(aVariable) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
+  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:error\",\"name\":\"" + String(aVariable) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
   webSocket.sendTXT(message);
+  SPIFFS.remove(aVariable);
 }
 void writeFile(uint8_t * &payload, size_t length) {
+
   File writingFile = SPIFFS.open(aVariable, "a");
 
   int bytesWritten = writingFile.write(payload, length);
   if (bytesWritten == 0) {
     sendFailedSaveMessage();
     USE_SERIAL.println((String)"[WSc] ------------------- failed to write : " + bytesWritten);
-
   }
   else {
     totalWrittenBytes += bytesWritten;
@@ -119,40 +121,48 @@ void writeFile(uint8_t * &payload, size_t length) {
   writingFile.close();
 }
 
-void sendBinary(String filename) {
+String sendFileName;
 
-  USE_SERIAL.println((String)"[WSc] sendBinary: " + filename);
+void onRequestFileDetail(String filename) {
+  sendFileName = filename;
+  File file = SPIFFS.open(sendFileName, "r");    //open destination file to read
 
-  File file = SPIFFS.open(filename, "r");    //open destination file to read
+  if (!file) {
+    Serial.println("Can't open SPIFFS file !\r\n");
+    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"code\":401}}");
+  }
+  else {
+    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:detail:callback\",\"chunkSize\":" + String(_SEND_CHUNK_SIZE) + ",\"length\":" + String(file.size()) + "}}");
+  }
+  file.close();
 
+}
+void sendBinary(unsigned int startIndex) {
+  USE_SERIAL.println((String)"[WSc] sendBinary: " + sendFileName);
+  File file = SPIFFS.open(sendFileName, "r");    //open destination file to read
   if (!file) {
     Serial.println("Can't open SPIFFS file !\r\n");
   }
   else {
-    char buf[256];
+    char buf[_SEND_CHUNK_SIZE];
     int siz = file.size();
-    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:start\",\"name\":" + filename + ",\"length\":" + siz + "}}");
     USE_SERIAL.printf("File size: %u\n", siz);
-
-    while (siz > 0 && webSocket.isConnected()) {
-      yield();
-      int len = std::min((int)(sizeof(buf)), siz);
-      file.read((uint8_t *)buf, len);
-      webSocket.sendBIN((uint8_t *)buf, len);
-      siz -= len;
+    if (siz > 0 && startIndex < siz) {
+      unsigned int readLen = std::min((int)(_SEND_CHUNK_SIZE), (int) (siz - startIndex));
+      file.seek(startIndex);
+      file.read((uint8_t *)buf, readLen);
+      webSocket.sendBIN((uint8_t *)buf, readLen);
     }
-
-    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:finish\",\"name\":" + filename + ",\"remain\":" + siz + "}}");
-
-    //free(buf);
-    file.close();
   }
+
+  file.close();
 }
 void onStartSaveFile() {
   USE_SERIAL.println((String)"[WSc] open :" + aVariable);
-  String file = "/upload/" + String(aVariable);
+  String file = aVariable;
   USE_SERIAL.println((String)"[WSc] openfile :" + file);
   totalWrittenBytes = 0;
+  SPIFFS.remove(aVariable);
   sendSliceMessage();
 }
 void onFinishSaveFile() {
@@ -164,7 +174,7 @@ void onFinishSaveFile() {
   String fullPath = aVariable;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
-  webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
+  webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
   SPIFFS.remove(pathTo);
   SPIFFS.rename(fullPath, pathTo);
 }
@@ -189,11 +199,15 @@ void handleServerText(StaticJsonDocument<256> &doc) {
     aVariable = "/upload/" + filename;
     totalFileSize = doc["message"]["size"];
     onStartSaveFile();
-  } if (stringMessageKey == "file:send:finish") {
-    onFinishSaveFile();
-  } else if (stringMessageKey == "file:request") {
+  } else if (stringMessageKey == "file:detail:request") {
     const char* filename = doc["message"]["name"];
-    sendBinary(filename);
+    onRequestFileDetail(filename);
+  } else if (stringMessageKey == "file:request:slice") {
+    unsigned int startIndex = doc["message"]["start"];
+    sendBinary( startIndex);
+  } else if (stringMessageKey == "file:request:finished") {
+    USE_SERIAL.println((String)"[WSc] --------------------- file:send:finished :" + sendFileName );
+    // TODO
   } else if (stringMessageKey == "config:reset") {
     onSetupConfig();
   } else if (stringMessageKey == "composit:start") {
