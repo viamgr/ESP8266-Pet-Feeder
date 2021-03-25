@@ -3,10 +3,11 @@
 #define _CHUNK_SIZE 15360 //15*1024
 WebSocketsClient* webSocket = NULL;
 File* tempFile = NULL;
+unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
   uint8_t mode = getWifiManager()->getMode();
-  if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA) {
+  if (webSocket != NULL && (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA)) {
     webSocket->loop();
   }
 }
@@ -86,16 +87,31 @@ void startSocket() {
 void setupSocketHandler() {
 
 }
-size_t sentBytes = 0;
+int totalWrittenBytes = 0;
 void sendSliceMessage() {
-  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:slice\",\"start\":" + String(sentBytes) + ",\"end\":" + String(_CHUNK_SIZE) + "}}";
+
+  if (totalWrittenBytes < totalFileSize) {
+    int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize) + totalWrittenBytes;
+    String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}}";
+    webSocket->sendTXT(message);
+  }
+  else {
+    onFinishSaveFile();
+  }
+}
+void sendFailedSaveMessage() {
+  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"name\":" + String(tempFile->name()) + ",\"size\":" + String(totalWrittenBytes) + "}}";
   webSocket->sendTXT(message);
 }
 void writeFile(uint8_t * &payload, size_t length) {
-  size_t bytesWritten = tempFile->write(payload, length);
-  USE_SERIAL.println((String)"[WSc] writeFile :" + tempFile->position());
-  sentBytes += tempFile->position();
-  sendSliceMessage(sendBytes);
+  int bytesWritten = tempFile->write(payload, length);
+  if (bytesWritten == 0) {
+    sendFailedSaveMessage();
+  }
+  else {
+    totalWrittenBytes += bytesWritten;
+    sendSliceMessage();
+  }
 }
 
 void sendBinary(String filename) {
@@ -115,7 +131,7 @@ void sendBinary(String filename) {
 
     while (siz > 0 && webSocket->isConnected()) {
       yield();
-      size_t len = std::min((int)(sizeof(buf)), siz);
+      int len = std::min((int)(sizeof(buf)), siz);
       file.read((uint8_t *)buf, len);
       webSocket->sendBIN((uint8_t *)buf, len);
       siz -= len;
@@ -130,22 +146,26 @@ void sendBinary(String filename) {
 void onStartSaveFile(StaticJsonDocument<500> &doc) {
   const char* filename = doc["message"]["name"];
   String file = "/upload/" + String(filename);
+  totalFileSize = doc["message"]["size"];
   tempFile = new File(SPIFFS.open(file, "w"));
   USE_SERIAL.println((String)"[WSc] open :" + tempFile->name());
-  sentBytes = 0;
-  sendSliceMessage(sentBytes);
+  totalWrittenBytes = 0;
+  sendSliceMessage();
 }
 void onFinishSaveFile() {
+  if (tempFile == NULL) return;
   USE_SERIAL.printf("[WSc] close file");
   String pathTo = tempFile->name();
+  unsigned int fileSize = tempFile->size();
+  String fullPath = tempFile->name();
   pathTo.replace("/upload", "");
-  USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + tempFile->name() + " fullName:" + pathTo );
-  SPIFFS.remove(tempFile->name());
-  SPIFFS.rename(tempFile->name(), pathTo);
+  USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
+  webSocket->sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
+  SPIFFS.remove(fullPath);
+  SPIFFS.rename(fullPath, pathTo);
   tempFile->close();
   tempFile = NULL;
   delete tempFile;
-  webSocket->sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:finish\",\"name\":\"" + pathTo + "\",\"size\":" + String(sentBytes) + "}}");
 }
 void onGetTime() {
   String deviceTime = getDeviceTime();
