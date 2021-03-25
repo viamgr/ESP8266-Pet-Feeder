@@ -8,10 +8,8 @@ void disableLedTask(){
   led.disable();
 }
 
-void setupLed(){
-	
-  led.setup(preferences.getLedTurnOffDelay());
-	
+void setupLed(){	
+  led.setup(preferences.getLedTurnOffDelay());	
 }
 
 void onLedTimerEvent() {

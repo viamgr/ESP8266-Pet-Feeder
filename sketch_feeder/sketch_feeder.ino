@@ -62,7 +62,7 @@ void setup()
 }
 
 void initialSetup() {
-  initNtp();
+//  initNtp();
   initWifiManager();
   initServer();
   initClickButton();
@@ -77,6 +77,6 @@ void loop()
   updateFeedingLoop();
   updateServerControl();
   updateSocketHandler();
-  updateDnsManager();
+//  updateDnsManager();
   taskManager.execute();
 }

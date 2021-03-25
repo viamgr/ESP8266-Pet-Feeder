@@ -2,26 +2,26 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 
-NtpManager ntpManager(getScheduler());
+//NtpManager ntpManager(getScheduler());
 
-NtpManager* getNtpManager() {
-  return &ntpManager;
-}
-bool firstUpdateTime = true;
+//NtpManager* getNtpManager() {
+//  return &ntpManager;
+//}
+//bool firstUpdateTime = true;
 
-void initNtp() {
-  ntpManager.setOnTimeUpdateListener(onTimeUpdate);
-}
-void onTimeUpdate(unsigned long epochTime) {
-  if (firstUpdateTime == true) {
-    firstUpdateTime = false;
-    setDeviceTime(epochTime);
-    playAudio(AUDIO_START_UP, NULL);
-  }
-  else {
-    setDeviceTime(epochTime);
-  }
-}
+//void initNtp() {
+//  ntpManager.setOnTimeUpdateListener(onTimeUpdate);
+//}
+//void onTimeUpdate(unsigned long epochTime) {
+//  if (firstUpdateTime == true) {
+//    firstUpdateTime = false;
+//    setDeviceTime(epochTime);
+//    playAudio(AUDIO_START_UP, NULL);
+//  }
+//  else {
+//    setDeviceTime(epochTime);
+//  }
+//}
 
 
 void setDeviceTime(unsigned long epochTime) {

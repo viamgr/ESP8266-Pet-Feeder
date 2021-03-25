@@ -16,12 +16,12 @@ void initWifiManager() {
     Serial.print("wifiState:");
     Serial.println(wifiState);
 
-    if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
-      getNtpManager()->enable();
-    }
-    else {
-      getNtpManager()->disable();
-    }
+//    if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
+//      getNtpManager()->enable();
+//    }
+//    else {
+//      getNtpManager()->disable();
+//    }
   });
 
 

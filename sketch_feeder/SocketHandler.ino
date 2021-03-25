@@ -31,7 +31,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED: {
         USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-
+        webSocket.sendTXT("{\"key\": \"device:time\"}");
         // send message to server when Connected
         webSocket.sendTXT("{\"key\": \"device:subscribe\", \"message\": \"" + deviceId + "\"}");
       }
@@ -268,6 +268,9 @@ void parseText(uint8_t * payload, size_t length) {
       onPairedSignal();
     } else if (stringKey == "server:unpaired") {
       onUnpairedSignal();
+    } else if (stringKey == "server:time") {
+      unsigned long timestamp = doc["value"];
+      setDeviceTime(timestamp);
     }
   }
   // Clearing Buffer

@@ -1,4 +1,3 @@
-
 #include "ServerControl.h"
 
 ServerControl serverControl;

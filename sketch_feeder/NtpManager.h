@@ -50,7 +50,7 @@ class NtpManager: public Task  {
     }
     bool OnEnable() {
       Serial.println((String)"NtpManager OnEnable");
-      restart();
+      //restart();
       timeClient->begin();
       return true;
     }
