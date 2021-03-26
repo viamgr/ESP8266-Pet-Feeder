@@ -4,6 +4,7 @@
 #define _SEND_CHUNK_SIZE 512
 WebSocketsClient webSocket;
 
+String saveFileName = "";
 unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
@@ -101,13 +102,13 @@ void sendSliceMessage() {
   }
 }
 void sendFailedSaveMessage() {
-  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:error\",\"name\":\"" + String(aVariable) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
+  String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:error\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
   webSocket.sendTXT(message);
-  SPIFFS.remove(aVariable);
+  SPIFFS.remove(saveFileName);
 }
 void writeFile(uint8_t * &payload, size_t length) {
 
-  File writingFile = SPIFFS.open(aVariable, "a");
+  File writingFile = SPIFFS.open(saveFileName, "a");
 
   int bytesWritten = writingFile.write(payload, length);
   if (bytesWritten == 0) {
@@ -158,20 +159,20 @@ void sendBinary(unsigned int startIndex) {
   file.close();
 }
 void onStartSaveFile() {
-  USE_SERIAL.println((String)"[WSc] open :" + aVariable);
-  String file = aVariable;
+  USE_SERIAL.println((String)"[WSc] open :" + saveFileName);
+  String file = saveFileName;
   USE_SERIAL.println((String)"[WSc] openfile :" + file);
   totalWrittenBytes = 0;
-  SPIFFS.remove(aVariable);
+  SPIFFS.remove(saveFileName);
   sendSliceMessage();
 }
 void onFinishSaveFile() {
   USE_SERIAL.printf("[WSc] close file");
-  String pathTo = aVariable;
-  File writingFile = SPIFFS.open(aVariable, "r");
+  String pathTo = saveFileName;
+  File writingFile = SPIFFS.open(saveFileName, "r");
   unsigned int fileSize = writingFile.size();
   writingFile.close();
-  String fullPath = aVariable;
+  String fullPath = saveFileName;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
   webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
@@ -196,7 +197,7 @@ void handleServerText(StaticJsonDocument<256> &doc) {
   USE_SERIAL.printf("[WSc] messageKey : %s\n", messageKey);
   if (stringMessageKey == "file:send:start") {
     String filename = doc["message"]["name"];
-    aVariable = "/upload/" + filename;
+    saveFileName = "/upload/" + filename;
     totalFileSize = doc["message"]["size"];
     onStartSaveFile();
   } else if (stringMessageKey == "file:detail:request") {
