@@ -1,30 +1,92 @@
 #include <WebSocketsClient.h>
+#include <WebSocketsServer.h>
 
 #define _CHUNK_SIZE 15360 //15*1024
 #define _SEND_CHUNK_SIZE 512
-WebSocketsClient webSocket;
+WebSocketsClient clientWebSocket;
+WebSocketsServer serverWebSocket = WebSocketsServer(4200);
 
 String saveFileName = "";
 unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
   uint8_t mode = getWifiManager()->getMode();
-  if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA) {
-    webSocket.loop();
+  if (getWifiManager()->isStationMode()) {
+    clientWebSocket.loop();
+  }
+  if (getWifiManager()->isAccessPointMode()) {
+    serverWebSocket.loop();
   }
 }
 
+void setupSocketHandler() {
+
+}
 
 void callSocketAboutWifiConfigChanged() {
-  uint8_t mode = getWifiManager()->getMode();
-  if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA) {
-    startSocket();
+  if (getWifiManager()->isStationMode()) {
+    startClientSocket();
   }
   else {
-    stopSocket();
+    stopClientSocket();
   }
+
+  if (getWifiManager()->isAccessPointMode()) {
+    startServerSocket();
+  }
+  else {
+    stopServerSocket();
+  }
+
+
 }
 
+void startServerSocket() {
+  serverWebSocket.begin();
+  serverWebSocket.onEvent(serverWebSocketEvent);
+}
+
+void stopServerSocket() {
+  serverWebSocket.disconnect();
+
+}
+
+void serverWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+
+  switch (type) {
+    case WStype_DISCONNECTED:
+      onUnpairedSignal();
+      USE_SERIAL.printf("[%u] Disconnected!\n", num);
+      break;
+    case WStype_CONNECTED:
+      {
+        IPAddress ip = serverWebSocket.remoteIP(num);
+        USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+
+        // send message to client
+        sendText("{\"key\": \"device:time\"}");
+      }
+      break;
+    case WStype_TEXT:
+      USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
+      parseText(payload, length);
+      // send message to client
+      // serverWebSocket.sendTXT(num, "message here");
+
+      // send data to all connected clients
+      // serverWebSocket.broadcastTXT("message here");
+      break;
+    case WStype_BIN:
+      USE_SERIAL.printf("[%u] get binary length: %u\n", num, length);
+      //hexdump(payload, length);
+      writeFile(payload, length);
+
+      // send message to client
+      // serverWebSocket.sendBIN(num, payload, length);
+      break;
+  }
+
+}
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   switch (type) {
     case WStype_DISCONNECTED:
@@ -32,23 +94,23 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED: {
         USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-        webSocket.sendTXT("{\"key\": \"device:time\"}");
+        sendText("{\"key\": \"device:time\"}");
         // send message to server when Connected
-        webSocket.sendTXT("{\"key\": \"device:subscribe\", \"message\": \"" + deviceId + "\"}");
+        sendText("{\"key\": \"device:subscribe\", \"message\": \"" + deviceId + "\"}");
       }
       break;
     case WStype_TEXT:
       //      USE_SERIAL.printf("[WSc] get text: %s\n", payload);
       parseText(payload, length);
       // send message to server
-      // webSocket.sendTXT("message here");
+      // sendText("message here");
       break;
     case WStype_BIN:
       USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
       //hexdump(payload, length);
       writeFile(payload, length);
       // send data to server
-      // webSocket.sendBIN(payload, length);
+      // clientWebSocket.sendBIN(payload, length);
       break;
     case WStype_PING:
       // pong will be send automatically
@@ -60,33 +122,30 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
   }
 }
-void stopSocket() {
-  webSocket.disconnect();
+void stopClientSocket() {
+  clientWebSocket.disconnect();
   //  delete webSocket;
 }
 
-void startSocket() {
+void startClientSocket() {
   //  webSocket = new WebSocketsClient();
   // server address, port and URL
-  webSocket.begin("192.168.1.100", 4200, "/");
+  clientWebSocket.begin("192.168.1.100", 4200, "/");
 
   // event handler
-  webSocket.onEvent(webSocketEvent);
+  clientWebSocket.onEvent(webSocketEvent);
 
   // use HTTP Basic Authorization this is optional remove if not needed
-  //webSocket.setAuthorization("user", "Password");
+  //clientWebSocket.setAuthorization("user", "Password");
 
   // try ever 5000 again if connection has failed
-  webSocket.setReconnectInterval(5000);
+  clientWebSocket.setReconnectInterval(5000);
 
   // start heartbeat (optional)
   // ping server every 15000 ms
   // expect pong from server within 3000 ms
   // consider connection disconnected if pong is not received 2 times
-  webSocket.enableHeartbeat(15000, 3000, 2);
-
-}
-void setupSocketHandler() {
+  clientWebSocket.enableHeartbeat(15000, 3000, 2);
 
 }
 int totalWrittenBytes = 0;
@@ -95,7 +154,7 @@ void sendSliceMessage() {
   if (totalWrittenBytes < totalFileSize) {
     int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize - totalWrittenBytes) + totalWrittenBytes;
     String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}}";
-    webSocket.sendTXT(message);
+    sendText(message);
   }
   else {
     onFinishSaveFile();
@@ -103,7 +162,7 @@ void sendSliceMessage() {
 }
 void sendFailedSaveMessage() {
   String message = "{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:error\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}}";
-  webSocket.sendTXT(message);
+  sendText(message);
   SPIFFS.remove(saveFileName);
 }
 void writeFile(uint8_t * &payload, size_t length) {
@@ -130,10 +189,10 @@ void onRequestFileDetail(String filename) {
 
   if (!file) {
     Serial.println("Can't open SPIFFS file !\r\n");
-    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"code\":401}}");
+    sendText("{\"key\": \"device:text\", \"message\": {\"key\":\"file:request:error\",\"code\":401}}");
   }
   else {
-    webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:detail:callback\",\"chunkSize\":" + String(_SEND_CHUNK_SIZE) + ",\"length\":" + String(file.size()) + "}}");
+    sendText("{\"key\": \"device:text\", \"message\": {\"key\":\"file:detail:callback\",\"chunkSize\":" + String(_SEND_CHUNK_SIZE) + ",\"length\":" + String(file.size()) + "}}");
   }
   file.close();
 
@@ -152,7 +211,8 @@ void sendBinary(unsigned int startIndex) {
       unsigned int readLen = std::min((int)(_SEND_CHUNK_SIZE), (int) (siz - startIndex));
       file.seek(startIndex);
       file.read((uint8_t *)buf, readLen);
-      webSocket.sendBIN((uint8_t *)buf, readLen);
+      clientWebSocket.sendBIN((uint8_t *)buf, readLen);
+      serverWebSocket.broadcastBIN((uint8_t *)buf, readLen);
     }
   }
 
@@ -175,17 +235,17 @@ void onFinishSaveFile() {
   String fullPath = saveFileName;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
-  webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
+  sendText("{\"key\": \"device:text\", \"message\": {\"key\":\"file:send:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}}");
   SPIFFS.remove(pathTo);
   SPIFFS.rename(fullPath, pathTo);
 }
 void onGetTime() {
   String deviceTime = getDeviceTime();
-  webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"time:is\",\"value\":" + deviceTime + "}}");
+  sendText("{\"key\": \"device:text\", \"message\": {\"key\":\"time:is\",\"value\":" + deviceTime + "}}");
 }
 void sendWifiList() {
   String json = getWifiList();
-  webSocket.sendTXT("{\"key\": \"device:text\", \"message\": {\"key\":\"wifi:list:is\",\"value\":" + json + "}}");
+  sendText("{\"key\": \"device:text\", \"message\": {\"key\":\"wifi:list:is\",\"value\":" + json + "}}");
   json = String();
 }
 void handleServerText(StaticJsonDocument<256> &doc) {
@@ -238,8 +298,26 @@ void handleServerText(StaticJsonDocument<256> &doc) {
   }
   doc.clear();
 }
+
+void sendText(const char* payload) {
+  clientWebSocket.sendTXT(payload);
+  serverWebSocket.broadcastTXT(payload);
+}
+void sendText(String & payload) {
+  clientWebSocket.sendTXT(payload);
+  serverWebSocket.broadcastTXT(payload);
+}
+void sendText(const uint8_t * payload) {
+  clientWebSocket.sendTXT(payload);
+  serverWebSocket.broadcastTXT(payload);
+}
+void sendText(char * payload) {
+  clientWebSocket.sendTXT(payload);
+  serverWebSocket.broadcastTXT(payload);
+}
+
 void sendPairedSignal() {
-  webSocket.sendTXT("{\"key\": \"device:paired\"}");
+  sendText("{\"key\": \"device:paired\"}");
 }
 
 void onPairedSignal() {
@@ -261,15 +339,15 @@ void parseText(uint8_t * payload, size_t length) {
     String stringKey = key;
     USE_SERIAL.printf("[WSc] parseText : %s\n", key);
 
-    if (stringKey == "server:text") {
+    if (stringKey == "server:text" || stringKey == "client:text") {
       handleServerText(doc);
-    } else if (stringKey == "server:pair") {
+    } else if (stringKey == "server:pair" || stringKey == "client:pair") {
       sendPairedSignal();
-    } else if (stringKey == "server:paired") {
+    } else if (stringKey == "server:paired" || stringKey == "client:paired") {
       onPairedSignal();
-    } else if (stringKey == "server:unpaired") {
+    } else if (stringKey == "server:unpaired" || stringKey == "client:unpaired") {
       onUnpairedSignal();
-    } else if (stringKey == "server:time") {
+    } else if (stringKey == "server:time" || stringKey == "client:time") {
       unsigned long timestamp = doc["value"];
       setDeviceTime(timestamp);
     }

@@ -146,6 +146,14 @@ class WifiManager {
 
     }
 
+    boolean  isAccessPointMode() {
+      return mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP;
+    }
+    
+    boolean  isStationMode() {
+      return mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA;
+    }
+    
     void start() {
       setMode(mode);
     }
