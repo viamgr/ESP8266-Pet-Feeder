@@ -76,6 +76,6 @@ void loop()
   updateFeedingLoop();
   updateServerControl();
   updateSocketHandler();
-//  updateDnsManager();
+  updateDnsManager();
   taskManager.execute();
 }

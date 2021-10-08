@@ -1,1 +1,14 @@
-{"feedingDuration":2000,"ledTurnOffDelay":300000,"ledState":2,"soundVolume":3.99,"wifiSsid":"V. M","wifiPassword":"6037991302","alarms":["0 30 08 * * *","0 30 10 * * *"],"accessPointName":"Feeder-Access-Point111","wifiMode":1}
+{
+  "feedingDuration": 2000,
+  "ledTurnOffDelay": 300000,
+  "ledState": 2,
+  "soundVolume": 3.99,
+  "wifiSsid": "",
+  "wifiPassword": "",
+  "alarms": [
+    "0 30 08 * * *",
+    "0 30 10 * * *"
+  ],
+  "accessPointName": "Feeder-Access-Point",
+  "wifiMode": 1
+}
