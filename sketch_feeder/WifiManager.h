@@ -115,6 +115,9 @@ class WifiManager {
     }
     void setMode(uint8_t mode) {
       this->mode = mode;
+      
+      Serial.println((String) "this->mode:" + this->mode );
+
       if (mode == WIFI_MODE_AP_STA) {
         Serial.println("Turn on station and access point");
 
@@ -149,11 +152,11 @@ class WifiManager {
     boolean  isAccessPointMode() {
       return mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP;
     }
-    
+
     boolean  isStationMode() {
       return mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_STA;
     }
-    
+
     void start() {
       setMode(mode);
     }

@@ -3,12 +3,12 @@
   "ledTurnOffDelay": 300000,
   "ledState": 2,
   "soundVolume": 3.99,
-  "wifiSsid": "",
-  "wifiPassword": "",
+  "wifiSsid": "BMV",
+  "wifiPassword": "6037991302",
   "alarms": [
     "0 30 08 * * *",
     "0 30 10 * * *"
   ],
   "accessPointName": "Feeder-Access-Point",
-  "wifiMode": 1
+  "wifiMode": 2
 }

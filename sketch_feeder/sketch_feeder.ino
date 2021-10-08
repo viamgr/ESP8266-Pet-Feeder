@@ -36,13 +36,16 @@ void stopAllTasks() {
 
 void onSetupConfig() {
   Serial.println("OnSetupConfig");
+  reloadPreferences();
   resetFeedingTasks();
   setupWifi();
   setupLed();
   setupAudioConfig();
   configDnsManager();
 }
-
+void reloadPreferences() {
+  preferences.reload();
+}
 void setup()
 {
   setenv("TZ", "UTC-03:30", 0);
@@ -61,7 +64,7 @@ void setup()
 }
 
 void initialSetup() {
-//  initNtp();
+  //  initNtp();
   initWifiManager();
   initServer();
   initClickButton();

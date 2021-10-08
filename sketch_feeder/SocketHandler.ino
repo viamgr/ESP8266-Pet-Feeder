@@ -130,7 +130,7 @@ void stopClientSocket() {
 void startClientSocket() {
   //  webSocket = new WebSocketsClient();
   // server address, port and URL
-  clientWebSocket.begin("192.168.1.100", 4200, "/");
+  clientWebSocket.begin("192.168.1.50", 4200, "/");
 
   // event handler
   clientWebSocket.onEvent(webSocketEvent);
