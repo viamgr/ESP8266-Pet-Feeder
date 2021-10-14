@@ -10,5 +10,9 @@
     "0 30 10 * * *"
   ],
   "accessPointName": "Feeder-Access-Point",
-  "wifiMode": 2
+  "staticIp": "192.168.1.100",
+  "gateway": "192.168.1.1",
+  "subnet": "255.255.255.0",
+  "useDhcp": 0,
+  "wifiMode": 3
 }

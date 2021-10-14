@@ -52,7 +52,7 @@ class WifiManager {
       Serial.println("beginStation, IP: " + ssid);
 
       if (ssid != NULL && ssid != '\0' && ssid != "") {
-        if (useDhcp) {
+        if (!useDhcp) {
           WiFi.config(*staticIp, *gateway, *subnet);
         }
 
@@ -94,6 +94,10 @@ class WifiManager {
     void setup(String ssid, String password, String accessPointSsid, uint8_t mode,
                String staticIp, String gateway, String subnet, bool useDhcp)
     {
+      this->staticIp = new IPAddress(192, 168, 4, 1);
+      this->gateway = new IPAddress(192, 168, 4, 1);
+      this->subnet = new IPAddress(255, 255, 255, 0);
+
       this->ssid = ssid;
       this->password = password;
       this->accessPointSsid = accessPointSsid;
