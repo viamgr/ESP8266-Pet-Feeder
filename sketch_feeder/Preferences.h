@@ -8,11 +8,16 @@
 #define ledStateAlwaysOff 0
 #define ledStateAlwaysOn 1
 #define ledStateFeedingOn 2
+#define DEFAULT_USE_DHCP 1
 #define defaultLedTurnOffDelay 5000
 #define defaultLedState ledStateFeedingOn
 #define DEFAULT_WIFI_MODE WIFI_MODE_AP
 #define MAX_ALARM_SIZE 10
 #define CONFIG_FILE_PATH "/config.json"
+#define DEFAULT_STATIC_IP "192.168.4.1"
+#define DEFAULT_GATEWAY "192.168.4.1"
+#define DEFAULT_SUBNET "255.255.255.0"
+#define DHCP_ENABLED 1
 
 class Preferences
 {
@@ -37,6 +42,21 @@ class Preferences
       return (char*)password;
     }
 
+    char* getStaticIp() {
+      const char* staticIp = doc["staticIp"];
+      return (char*)staticIp;
+    }
+
+    char* getGateway() {
+      const char* gateway = doc["gateway"];
+      return (char*)gateway;
+    }
+
+    char* getSubnet() {
+      const char* subnet = doc["subnet"];
+      return (char*)subnet;
+    }
+
     int getLedTurnOffDelay() {
       return doc["ledTurnOffDelay"] | defaultLedTurnOffDelay;
     }
@@ -59,8 +79,9 @@ class Preferences
     uint8_t getWifiMode() {
       return doc["wifiMode"] | DEFAULT_WIFI_MODE;
     }
-
-
+    uint8_t useDhcp() {
+      return doc["useDhcp"] | DEFAULT_USE_DHCP;
+    }
     void setLedTurnOffDelay(int value) {
       doc["ledTurnOffDelay"] = value;
     }

@@ -1,5 +1,5 @@
 #include "WifiManager.h"
-WifiManager wifiManager(&staticip);
+WifiManager wifiManager;
 
 WifiManager* getWifiManager() {
   return &wifiManager;
@@ -45,8 +45,8 @@ void shiftWifiState() {
 
 void setupWifi() {
   Serial.println((String) "setupWifi:" + preferences.getWifiMode());
-  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(),
-                    preferences.getAccessPointName(), preferences.getWifiMode());
+  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(),preferences.getAccessPointName(),
+   preferences.getWifiMode(),preferences.getStaticIp(),preferences.getGateway(),preferences.getSubnet(),preferences.useDhcp()== DHCP_ENABLED);
   restartWifi();
   callDnsManagerAboutWifiConfigChanged();
   callSocketAboutWifiConfigChanged();

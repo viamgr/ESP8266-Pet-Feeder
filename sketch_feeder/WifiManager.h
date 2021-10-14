@@ -19,12 +19,15 @@ class WifiManager {
 
   private:
 
-    IPAddress *staticip;
+    IPAddress *staticIp;
+    IPAddress *gateway;
+    IPAddress *subnet;
     String accessPointSsid;
     String ssid;
     String password;
     uint8_t status;
     uint8_t mode = true;
+    bool useDhcp = true;
     WifiStatusListener wifiStatusListener = NULL;
     WiFiEventHandler gotIpEventHandler, mDisConnectHandler;
 
@@ -49,6 +52,11 @@ class WifiManager {
       Serial.println("beginStation, IP: " + ssid);
 
       if (ssid != NULL && ssid != '\0' && ssid != "") {
+        if (useDhcp) {
+          WiFi.config(*staticIp, *gateway, *subnet);
+        }
+
+
         WiFi.begin(ssid, password);
       }
 
@@ -57,10 +65,8 @@ class WifiManager {
     }
 
   public:
-    WifiManager(IPAddress* staticip) {
+    WifiManager() {
       WiFi.mode(WIFI_OFF);
-
-      this->staticip = staticip;
 
       gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
       {
@@ -85,11 +91,17 @@ class WifiManager {
     //      beginStation();
     //    }
 
-    void setup(String ssid, String password, String accessPointSsid, uint8_t mode) {
+    void setup(String ssid, String password, String accessPointSsid, uint8_t mode,
+               String staticIp, String gateway, String subnet, bool useDhcp)
+    {
       this->ssid = ssid;
       this->password = password;
       this->accessPointSsid = accessPointSsid;
       this->mode = mode;
+      this->staticIp->fromString(staticIp);
+      this->gateway->fromString(gateway);
+      this->subnet->fromString(subnet);
+      this->useDhcp = useDhcp;
     }
 
     uint8_t getMode() {
@@ -115,7 +127,7 @@ class WifiManager {
     }
     void setMode(uint8_t mode) {
       this->mode = mode;
-      
+
       Serial.println((String) "this->mode:" + this->mode );
 
       if (mode == WIFI_MODE_AP_STA) {

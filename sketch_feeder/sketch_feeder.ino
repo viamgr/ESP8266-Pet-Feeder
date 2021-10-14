@@ -14,9 +14,6 @@
 
 String deviceId = "Feeder1";
 
-IPAddress staticip(192, 168, 4, 1);
-IPAddress gateway(192, 168, 4, 1);
-IPAddress subnet(255, 255, 255, 0);
 
 NtpManager* getNtpManager();
 Scheduler taskManager;

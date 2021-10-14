@@ -29,7 +29,13 @@ void updateDnsManager() {
 }
 void startDns() {
   Serial.println("startDns");
-  WiFi.softAPConfig(staticip, gateway, subnet);
+  IPAddress staticIpAddress;
+  staticIpAddress.fromString(preferences.getStaticIp());
+  IPAddress gatewayAddress;
+  gatewayAddress.fromString(preferences.getGateway());
+  IPAddress subnetAddress;
+  subnetAddress.fromString(preferences.getSubnet());
+  WiFi.softAPConfig(staticIpAddress, gatewayAddress, subnetAddress);
 
   dnsServer = new DNSServer();
   // modify TTL associated  with the domain name (in seconds)
@@ -42,7 +48,7 @@ void startDns() {
   dnsServer->setErrorReplyCode(DNSReplyCode::ServerFailure);
 
   // start DNS server for a specific domain name
-  dnsServer->start(DNS_PORT, "*", *staticip);
+  dnsServer->start(DNS_PORT, "*", staticIpAddress);
 }
 
 void stopDns() {
