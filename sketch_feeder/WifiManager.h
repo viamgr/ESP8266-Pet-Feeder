@@ -28,16 +28,27 @@ class WifiManager {
     uint8_t status;
     uint8_t mode = true;
     bool useDhcp = true;
+    bool autoApSwitch = false;
     WifiStatusListener wifiStatusListener = NULL;
     WiFiEventHandler gotIpEventHandler, mDisConnectHandler;
 
     void onDisconnect() {
-      Serial.println ( "WiFi On Disconnect." + WiFi.status()  );
+      Serial.println ( "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" );
+      if (this->mode == WIFI_MODE_STA) {
+        autoApSwitch = true;
+        setMode(WIFI_MODE_AP_STA);
+      }
       setStatus(WIFI_STA_STATE_FAILED);
 
     }
     void onConnect() {
+      if (this->mode == WIFI_MODE_AP_STA && autoApSwitch) {
+        setMode(WIFI_MODE_STA);
+      }
       setStatus(WIFI_STA_STATE_ESTABLISHED);
+
+      Serial.print("Station connected, IP: ");
+      Serial.println(WiFi.localIP());
     }
 
     void turnOff() {
@@ -56,7 +67,6 @@ class WifiManager {
           WiFi.config(*staticIp, *gateway, *subnet);
         }
 
-
         WiFi.begin(ssid, password);
       }
 
@@ -64,22 +74,38 @@ class WifiManager {
 
     }
 
+
   public:
     WifiManager() {
-      WiFi.mode(WIFI_OFF);
+      //      WiFi.mode(WIFI_OFF);
 
-      gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
-      {
-        Serial.print("Station connected, IP: ");
-        Serial.println(WiFi.localIP());
-        this->onConnect();
-      });
 
-      mDisConnectHandler = WiFi.onStationModeDisconnected([this](const WiFiEventStationModeDisconnected & event)
-      {
-        this->onDisconnect();
-      });
+      //      gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
+      //      {
+      //        this->onConnect();
+      //      });
+      //
+      //      mDisConnectHandler = WiFi.onStationModeDisconnected([this](const WiFiEventStationModeDisconnected & event)
+      //      {
+      //        this->onDisconnect();
+      //      });
+
     }
+    void onWiFiEvent(WiFiEvent event)
+    {
+      switch (event)
+      {
+        case WIFI_EVENT_STAMODE_DISCONNECTED:
+          Serial.println("WiFi WIFI_EVENT_STAMODE_DISCONNECTED ");
+          onDisconnect();
+          break;
+        case WIFI_EVENT_STAMODE_CONNECTED:
+          Serial.println("WiFi WIFI_EVENT_STAMODE_CONNECTED ");
+          onConnect();
+          break;
+      }
+    }
+
     //
     //    void connectToStation() {
     //      if (mode == WIFI_MODE_OFF || mode == WIFI_MODE_STA ) {
@@ -90,6 +116,7 @@ class WifiManager {
     //      }
     //      beginStation();
     //    }
+
 
     void setup(String ssid, String password, String accessPointSsid, uint8_t mode,
                String staticIp, String gateway, String subnet, bool useDhcp)
@@ -108,6 +135,9 @@ class WifiManager {
       this->useDhcp = useDhcp;
     }
 
+    uint8_t getStatus() {
+      return this->status;
+    }
     uint8_t getMode() {
       return this->mode;
     }

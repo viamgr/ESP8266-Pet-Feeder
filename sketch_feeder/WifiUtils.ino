@@ -9,19 +9,29 @@ void updateWifiManager() {
 
 }
 
+void onWiFiEvent(WiFiEvent event)
+{
+  Serial.println("WiFi onWiFiEvent ");
+  wifiManager.onWiFiEvent(event);
+}
+  
 void initWifiManager() {
-
+  WiFi.onEvent(onWiFiEvent, WIFI_EVENT_STAMODE_DISCONNECTED);
+  WiFi.onEvent(onWiFiEvent, WIFI_EVENT_STAMODE_CONNECTED);
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {
     Serial.println();
     Serial.print("wifiState:");
     Serial.println(wifiState);
 
-//    if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
-//      getNtpManager()->enable();
-//    }
-//    else {
-//      getNtpManager()->disable();
-//    }
+    callDnsManagerAboutWifiConfigChanged();
+    callSocketAboutWifiConfigChanged();
+
+    //    if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
+    //      getNtpManager()->enable();
+    //    }
+    //    else {
+    //      getNtpManager()->disable();
+    //    }
   });
 
 
@@ -45,11 +55,9 @@ void shiftWifiState() {
 
 void setupWifi() {
   Serial.println((String) "setupWifi:" + preferences.getWifiMode());
-  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(),preferences.getAccessPointName(),
-   preferences.getWifiMode(),preferences.getStaticIp(),preferences.getGateway(),preferences.getSubnet(),preferences.useDhcp()== DHCP_ENABLED);
+  wifiManager.setup(preferences.getWifiSsid(), preferences.getWifiPassword(), preferences.getAccessPointName(),
+                    preferences.getWifiMode(), preferences.getStaticIp(), preferences.getGateway(), preferences.getSubnet(), preferences.useDhcp() == DHCP_ENABLED);
   restartWifi();
-  callDnsManagerAboutWifiConfigChanged();
-  callSocketAboutWifiConfigChanged();
 }
 
 String getWifiList() {

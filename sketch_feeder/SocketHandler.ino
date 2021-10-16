@@ -3,6 +3,7 @@
 
 #define _CHUNK_SIZE 15360 //15*1024
 #define _SEND_CHUNK_SIZE 512
+#define SOCKET_BASE_URL "192.168.1.50"
 WebSocketsClient clientWebSocket;
 WebSocketsServer serverWebSocket = WebSocketsServer(4200);
 
@@ -24,14 +25,14 @@ void setupSocketHandler() {
 }
 
 void callSocketAboutWifiConfigChanged() {
-  if (getWifiManager()->isStationMode()) {
+  if (getWifiManager()->isStationMode() && getWifiManager()->getStatus() == WIFI_STA_STATE_ESTABLISHED) {
     startClientSocket();
   }
   else {
     stopClientSocket();
   }
 
-  if (getWifiManager()->isAccessPointMode()) {
+  if (getWifiManager()->isAccessPointMode() || getWifiManager()->getStatus() == WIFI_STA_STATE_FAILED) {
     startServerSocket();
   }
   else {
@@ -130,7 +131,7 @@ void stopClientSocket() {
 void startClientSocket() {
   //  webSocket = new WebSocketsClient();
   // server address, port and URL
-  clientWebSocket.begin("192.168.1.50", 4200, "/");
+  clientWebSocket.begin(SOCKET_BASE_URL, 4200, "/");
 
   // event handler
   clientWebSocket.onEvent(webSocketEvent);

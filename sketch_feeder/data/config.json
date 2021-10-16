@@ -3,7 +3,7 @@
   "ledTurnOffDelay": 300000,
   "ledState": 2,
   "soundVolume": 3.99,
-  "wifiSsid": "BMV",
+  "wifiSsid": "BMV1",
   "wifiPassword": "6037991302",
   "alarms": [
     "0 30 08 * * *",
@@ -14,5 +14,5 @@
   "gateway": "192.168.1.1",
   "subnet": "255.255.255.0",
   "useDhcp": 0,
-  "wifiMode": 3
+  "wifiMode": 2
 }
