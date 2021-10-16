@@ -1,5 +1,7 @@
 #include "WifiManager.h"
-WifiManager wifiManager;
+
+
+WifiManager wifiManager(getScheduler());
 
 WifiManager* getWifiManager() {
   return &wifiManager;
@@ -14,8 +16,10 @@ void onWiFiEvent(WiFiEvent event)
   Serial.println("WiFi onWiFiEvent ");
   wifiManager.onWiFiEvent(event);
 }
-  
+
+
 void initWifiManager() {
+
   WiFi.onEvent(onWiFiEvent, WIFI_EVENT_STAMODE_DISCONNECTED);
   WiFi.onEvent(onWiFiEvent, WIFI_EVENT_STAMODE_CONNECTED);
   wifiManager.setOnWifiStatusListener([ = ](int wifiState) {

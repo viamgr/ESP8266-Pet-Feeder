@@ -13,6 +13,8 @@
 #define WIFI_MODE_STA 2
 #define WIFI_MODE_AP_STA 3
 
+#include "TimeoutHandler.h"
+
 typedef std::function<void(int status)> WifiStatusListener;
 
 class WifiManager {
@@ -29,8 +31,10 @@ class WifiManager {
     uint8_t mode = true;
     bool useDhcp = true;
     bool autoApSwitch = false;
+    bool autoRetry = true;
     WifiStatusListener wifiStatusListener = NULL;
     WiFiEventHandler gotIpEventHandler, mDisConnectHandler;
+    TimeoutHandler *timeoutHandler = NULL;
 
     void onDisconnect() {
       Serial.println ( "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD" );
@@ -40,7 +44,20 @@ class WifiManager {
       }
       setStatus(WIFI_STA_STATE_FAILED);
 
+      timeoutHandler->setInterval(10000);
+      timeoutHandler->restart();
+
+
     }
+    void reconnect() {
+      if (autoRetry)
+        WiFi.reconnect();
+    }
+
+    void setAutoRetry(bool autoRetry) {
+      this->autoRetry = autoRetry;
+    }
+
     void onConnect() {
       if (this->mode == WIFI_MODE_AP_STA && autoApSwitch) {
         setMode(WIFI_MODE_STA);
@@ -76,7 +93,17 @@ class WifiManager {
 
 
   public:
-    WifiManager() {
+    WifiManager(Scheduler* scheduler) {
+      timeoutHandler = new TimeoutHandler(scheduler);
+      timeoutHandler->setOnTimeoutListener([this]() {
+        Serial.println((String)"wifi_softap_get_station_num:" + wifi_softap_get_station_num());
+        if (wifi_softap_get_station_num() == 0)
+          this->reconnect();
+        else {
+          timeoutHandler->restart();
+        }
+      });
+      WiFi.setAutoReconnect(false);
       //      WiFi.mode(WIFI_OFF);
 
 
@@ -148,8 +175,10 @@ class WifiManager {
 
     void setStatus(uint8_t value) {
       Serial.println((String)"WifiManager setStatus value:" + value + " old:" + status );
-      if (wifiStatusListener != NULL && value != status) wifiStatusListener(value);
+      bool callWifiListener = wifiStatusListener != NULL && value != status;
       status = value;
+      if (callWifiListener)
+        wifiStatusListener(value);
     }
 
     void enableAp() {

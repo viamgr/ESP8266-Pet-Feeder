@@ -13,6 +13,6 @@
   "staticIp": "192.168.1.100",
   "gateway": "192.168.1.1",
   "subnet": "255.255.255.0",
-  "useDhcp": 0,
+  "useDhcp": 1,
   "wifiMode": 2
 }

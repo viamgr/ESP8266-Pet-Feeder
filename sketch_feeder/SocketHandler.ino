@@ -25,6 +25,7 @@ void setupSocketHandler() {
 }
 
 void callSocketAboutWifiConfigChanged() {
+  Serial.println((String)"isStationMode():" + getWifiManager()->isStationMode() + " getStatus:" + getWifiManager()->getStatus());
   if (getWifiManager()->isStationMode() && getWifiManager()->getStatus() == WIFI_STA_STATE_ESTABLISHED) {
     startClientSocket();
   }
@@ -43,11 +44,15 @@ void callSocketAboutWifiConfigChanged() {
 }
 
 void startServerSocket() {
+  Serial.println("startServerSocket");
+
   serverWebSocket.begin();
   serverWebSocket.onEvent(serverWebSocketEvent);
 }
 
 void stopServerSocket() {
+  Serial.println("stopServerSocket");
+
   serverWebSocket.disconnect();
 
 }
@@ -124,11 +129,14 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   }
 }
 void stopClientSocket() {
+  Serial.println("stopClientSocket");
   clientWebSocket.disconnect();
   //  delete webSocket;
 }
 
 void startClientSocket() {
+  Serial.println("startClientSocket");
+
   //  webSocket = new WebSocketsClient();
   // server address, port and URL
   clientWebSocket.begin(SOCKET_BASE_URL, 4200, "/");
