@@ -3,7 +3,7 @@
 
 #define _CHUNK_SIZE 15360 //15*1024
 #define _SEND_CHUNK_SIZE 512
-#define SOCKET_BASE_URL "192.168.1.50"
+#define SOCKET_BASE_URL "193.108.115.160"
 WebSocketsClient clientWebSocket;
 WebSocketsServer serverWebSocket = WebSocketsServer(4200);
 
@@ -12,12 +12,12 @@ unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
   uint8_t mode = getWifiManager()->getMode();
-  if (getWifiManager()->isStationMode()) {
+//  if (getWifiManager()->isStationMode()) {
     clientWebSocket.loop();
-  }
-  if (getWifiManager()->isAccessPointMode()) {
+//  }
+//  if (getWifiManager()->isAccessPointMode()) {
     serverWebSocket.loop();
-  }
+//  }
 }
 
 void setupSocketHandler() {
@@ -33,7 +33,7 @@ void callSocketAboutWifiConfigChanged() {
     stopClientSocket();
   }
 
-  if (getWifiManager()->isAccessPointMode() || getWifiManager()->getStatus() == WIFI_STA_STATE_FAILED) {
+  if (getWifiManager()->isAccessPointMode() || getWifiManager()->isStationMode() || getWifiManager()->getStatus() == WIFI_STA_STATE_FAILED) {
     startServerSocket();
   }
   else {
@@ -70,7 +70,7 @@ void serverWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
         USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
         // send message to client
-        sendText("{\"key\": \"device:time\"}");
+        sendText((String)"{\"key\": \""+TIME_GET+"\"}");
       }
       break;
     case WStype_TEXT:
@@ -100,9 +100,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED: {
         USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-        sendText("{\"key\": \"device:time\"}");
+        sendText((String)"{\"key\": \""+TIME_GET+"\"}");
         // send message to server when Connected
-        sendText("{\"key\": \"device:subscribe\", \"value\": \"" + deviceId + "\"}");
+        sendText((String)"{\"key\": \""+SUBSCRIBE+"\", \"value\": \"" + deviceId + "\"}");
       }
       break;
     case WStype_TEXT:
@@ -162,7 +162,8 @@ void sendSliceMessage() {
 
   if (totalWrittenBytes < totalFileSize) {
     int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize - totalWrittenBytes) + totalWrittenBytes;
-    String message = "{\"key\":\"file:send:slice\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}";
+    Serial.println("***************************************#&@(*#&*(@&#(*@&(*#&( sendSliceMessage ");
+    String message = (String)"{\"key\":\""+FILE_SEND_SLICE+"\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}";
     sendText(message);
   }
   else {
@@ -170,7 +171,7 @@ void sendSliceMessage() {
   }
 }
 void sendFailedSaveMessage() {
-  String message = "{\"key\":\"file:send:error\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}";
+  String message = (String)"{\"key\":\""+FILE_SEND_ERROR+"\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}";
   sendText(message);
   SPIFFS.remove(saveFileName);
 }
@@ -198,10 +199,10 @@ void onRequestFileDetail(String filename) {
 
   if (!file) {
     Serial.println("Can't open SPIFFS file !\r\n");
-    sendText("{\"key\":\"file:request:error\",\"code\":401}");
+    sendText((String)"{\"key\":\""+FILE_REQUEST_ERROR+"\",\"code\":401}");
   }
   else {
-    sendText("{\"key\":\"file:detail:callback\",\"buffer\":" + String(_SEND_CHUNK_SIZE) + ",\"size\":" + String(file.size()) + "}");
+    sendText((String)"{\"key\":\""+FILE_DETAIL_CALLBACK+"\",\"buffer\":" + String(_SEND_CHUNK_SIZE) + ",\"size\":" + String(file.size()) + "}");
   }
   file.close();
 
@@ -244,17 +245,17 @@ void onFinishSaveFile() {
   String fullPath = saveFileName;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
-  sendText("{\"key\":\"file:send:finished\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}");
+  sendText((String)"{\"key\":\""+FILE_SEND_FINISHED+"\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}");
   SPIFFS.remove(pathTo);
   SPIFFS.rename(fullPath, pathTo);
 }
 void onGetTime() {
   String deviceTime = getDeviceTime();
-  sendText("{\"key\":\"time:is\",\"value\":" + deviceTime + "}");
+  sendText((String)"{\"key\":\""+TIME_IS+"\",\"value\":" + deviceTime + "}");
 }
 void sendWifiList() {
   String json = getWifiList();
-  sendText("{\"key\":\"wifi:list:is\",\"value\":" + json + "}");
+  sendText((String)"{\"key\":\""+WIFI_LIST_IS+"\",\"value\":" + json + "}");
   json = String();
 }
 void handleServerText(StaticJsonDocument<256> &doc) {
@@ -264,61 +265,71 @@ void handleServerText(StaticJsonDocument<256> &doc) {
   const char* messageKey = doc["key"];
   String stringMessageKey = messageKey;
   USE_SERIAL.printf("[WSc] messageKey : %s\n", messageKey);
-  if (stringMessageKey == "file:send:start") {
+  if (stringMessageKey == FILE_SEND_START) {
     String filename = doc["name"];
     saveFileName = "/upload/" + filename;
     totalFileSize = doc["size"];
     onStartSaveFile();
-  } else if (stringMessageKey == "file:detail:request") {
+  } else if (stringMessageKey == FILE_DETAIL_REQUEST) {
     const char* filename = doc["name"];
     onRequestFileDetail(filename);
-  } else if (stringMessageKey == "file:request:slice") {
+  } else if (stringMessageKey == FILE_REQUEST_SLICE) {
     unsigned int startIndex = doc["start"];
     sendBinary( startIndex);
-  } else if (stringMessageKey == "file:request:finished") {
+  } else if (stringMessageKey == FILE_REQUEST_FINISHED) {
     USE_SERIAL.println((String)"[WSc] --------------------- file:send:finished :" + sendFileName );
     // TODO
-  } else if (stringMessageKey == "config:reset") {
+  } else if (stringMessageKey == CONFIG_RESET) {
     onSetupConfig();
-  } else if (stringMessageKey == "composit:start") {
+  } else if (stringMessageKey == COMPOSITE_START) {
     onCompositeFeeding();
-  } else if (stringMessageKey == "motor:start") {
+  } else if (stringMessageKey == MOTOR_START) {
     onFeedingEvent();
-  } else if (stringMessageKey == "motor:finish") {
+  } else if (stringMessageKey == MOTOR_FINISH) {
     stopFeeding();
-  } else if (stringMessageKey == "lamp:start") {
+  } else if (stringMessageKey == LAMP_START) {
     turnOnLed();
-  } else if (stringMessageKey == "lamp:finish") {
+  } else if (stringMessageKey == LAMP_FINISH) {
     turnOffLed();
-  } else if (stringMessageKey == "audio:start") {
+  } else if (stringMessageKey == AUDIO_START) {
     const char* filename = doc["name"];
     playAudio(filename, NULL);
-  }  else if (stringMessageKey == "audio:finish") {
+  }  else if (stringMessageKey == AUDIO_FINISH) {
     stopAudio();
-  } else if (stringMessageKey == "time:get") {
+  } else if (stringMessageKey == TIME_GET) {
     onGetTime();
-  } else if (stringMessageKey == "time:set") {
+  } else if (stringMessageKey == TIME_SET) {
     long timestamp = doc["value"];
     setDeviceTime(timestamp);
-  } else if (stringMessageKey == "wifi:connect") {
+  } else if (stringMessageKey == WIFI_CONNECT) {
     restartWifi();
-  } else if (stringMessageKey == "wifi:list:get") {
+  } else if (stringMessageKey == WIFI_LIST_GET) {
     sendWifiList();
-  } else if (stringMessageKey == "update:start") {
+  } else if (stringMessageKey == UPDATE_START) {
     updateSketchFromFile();
-  } else if (stringMessageKey == "pair" ) {
+  } else if (stringMessageKey == PAIR ) {
     sendPairedSignal();
-  } else if (stringMessageKey == "paired") {
+  } else if (stringMessageKey == SUBSCRIBE ) {
+    onSubscribeEvent();
+  }  else if (stringMessageKey == SUBSCRIBE_DONE ) {
+    onSubscribed();
+  } else if (stringMessageKey == PAIR_DONE) {
     onPairedSignal();
-  } else if (stringMessageKey == "unpaired") {
+  } else if (stringMessageKey == UNPAIR) {
     onUnpairedSignal();
-  } else if (stringMessageKey == "time") {
+  } else if (stringMessageKey == TIME_SET) {
     unsigned long timestamp = doc["value"];
     setDeviceTime(timestamp);
   }
   doc.clear();
 }
+void onSubscribeEvent(){
+    sendText((String)"{\"key\": \""+SUBSCRIBE_DONE+"\"}");
+}
+void onSubscribed(){
+  USE_SERIAL.println("onSubscribed");
 
+}
 void sendText(const char* payload) {
   clientWebSocket.sendTXT(payload);
   serverWebSocket.broadcastTXT(payload);
@@ -337,7 +348,7 @@ void sendText(char * payload) {
 }
 
 void sendPairedSignal() {
-  sendText("{\"key\": \"device:paired\"}");
+  sendText((String)"{\"key\": \""+PAIR_DONE+"\"}");
 }
 
 void onPairedSignal() {
@@ -345,16 +356,16 @@ void onPairedSignal() {
 }
 
 void onUpdateFileNotFound() {
-  sendText("{\"key\":\"update:error\",\"code\":404}");
+  sendText((String)(String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":404}");
 }
 void onUpdateError() {
-  sendText("{\"key\":\"update:error\",\"code\":500}");
+  sendText((String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":500}");
 }
 void onUpdateFinished() {
-  sendText("{\"key\":\"update:finished\"}");
+  sendText((String)"{\"key\":\""+UPDATE_FINISHED+"\"}");
 }
 void onUpdateStarted() {
-  sendText("{\"key\":\"update:started\"}");
+  sendText((String)(String)"{\"key\":\""+UPDATE_STARTED+"\"}");
 }
 void onUnpairedSignal() {
   USE_SERIAL.println("onUnpairedSignal");

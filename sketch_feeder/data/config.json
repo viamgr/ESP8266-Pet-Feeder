@@ -3,16 +3,16 @@
   "ledTurnOffDelay": 300000,
   "ledState": 2,
   "soundVolume": 3.99,
-  "wifiSsid": "BMV1",
+  "wifiSsid": "BMV2",
   "wifiPassword": "6037991302",
   "alarms": [
     "0 30 08 * * *",
     "0 30 10 * * *"
   ],
   "accessPointName": "Feeder-Access-Point",
-  "staticIp": "192.168.1.100",
-  "gateway": "192.168.1.1",
+  "staticIp": "192.168.8.150",
+  "gateway": "192.168.8.1",
   "subnet": "255.255.255.0",
-  "useDhcp": 1,
+  "useDhcp": 0,
   "wifiMode": 2
 }

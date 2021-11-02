@@ -38,6 +38,8 @@ void initWifiManager() {
     //    }
   });
 
+//  callDnsManagerAboutWifiConfigChanged();
+//  callSocketAboutWifiConfigChanged();
 
 }
 void restartWifi() {

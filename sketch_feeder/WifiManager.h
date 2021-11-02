@@ -83,11 +83,10 @@ class WifiManager {
         if (!useDhcp) {
           WiFi.config(*staticIp, *gateway, *subnet);
         }
-
         WiFi.begin(ssid, password);
       }
 
-      Serial.println("beginStation finished ");
+      Serial.println((String)"beginStation finished useDhcp:" + (useDhcp == true));
 
     }
 
@@ -104,7 +103,7 @@ class WifiManager {
         }
       });
       WiFi.setAutoReconnect(false);
-      //      WiFi.mode(WIFI_OFF);
+      WiFi.mode(WIFI_OFF);
 
 
       //      gotIpEventHandler = WiFi.onStationModeGotIP([this](const WiFiEventStationModeGotIP & event)
@@ -148,8 +147,11 @@ class WifiManager {
     void setup(String ssid, String password, String accessPointSsid, uint8_t mode,
                String staticIp, String gateway, String subnet, bool useDhcp)
     {
-      this->staticIp = new IPAddress(192, 168, 4, 1);
-      this->gateway = new IPAddress(192, 168, 4, 1);
+      Serial.println((String)"setup:" + ssid + " useDhcp:" + useDhcp + " staticIp:" + staticIp);
+
+
+      this->staticIp = new IPAddress(192, 168, 8, 150);
+      this->gateway = new IPAddress(192, 168, 8, 1);
       this->subnet = new IPAddress(255, 255, 255, 0);
 
       this->ssid = ssid;

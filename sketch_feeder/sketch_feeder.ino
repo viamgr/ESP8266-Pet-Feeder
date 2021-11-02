@@ -58,6 +58,26 @@ void setup()
     SPIFFS.remove( dir.fileName());
   }
 
+
+  
+
+//  WiFi.mode(WIFI_STA);
+//
+//  WiFi.softAPdisconnect (true);
+//  
+//  IPAddress *staticIp = new IPAddress(1, 1, 1, 1);
+//  IPAddress *gateway = new IPAddress(1, 2, 3, 4);
+//  IPAddress *subnet = new IPAddress(255, 255, 255, 0);
+//
+//  staticIp->fromString("192.168.8.150");
+//  gateway->fromString("192.168.8.1");
+//  subnet->fromString("255.255.255.0");
+//
+//
+//  WiFi.config(*staticIp, *gateway, *subnet);
+//
+//  WiFi.begin("BMV2", "6037991302");
+
 }
 
 void initialSetup() {
