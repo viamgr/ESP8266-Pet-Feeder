@@ -3,17 +3,16 @@
 
 const byte DNS_PORT = 53;
 DNSServer* dnsServer = NULL;
-
+bool dnsStarted = false;
 void callDnsManagerAboutWifiConfigChanged() {
-  uint8_t mode = getWifiManager()->getMode();
-  if (dnsServer != NULL) {
-    if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP) {
-      startDns();
-    }
-    else {
-      stopDns();
-    }
 
+  uint8_t mode = getWifiManager()->getMode();
+
+  if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP) {
+    startDns();
+  }
+  else {
+    stopDns();
   }
 
 }
@@ -28,7 +27,17 @@ void updateDnsManager() {
 
 }
 void startDns() {
+  if (dnsStarted) {
+    Serial.println("startDns already");
+    return;
+  }
+  if (preferences.getStaticIp() == NULL || preferences.getGateway() == NULL || preferences.getSubnet() == NULL) {
+
+    Serial.println("startDns ip problem");
+    return;
+  }
   Serial.println("startDns");
+
   IPAddress staticIpAddress;
   staticIpAddress.fromString(preferences.getStaticIp());
   IPAddress gatewayAddress;
@@ -49,11 +58,14 @@ void startDns() {
 
   // start DNS server for a specific domain name
   dnsServer->start(DNS_PORT, "*", staticIpAddress);
+  dnsStarted = true;
 }
 
 void stopDns() {
-  dnsServer->stop();
-  delete dnsServer;
+  if (dnsStarted) {
+    Serial.println("stopDns");
+    dnsServer->stop();
+  }
 }
 
 

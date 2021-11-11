@@ -12,12 +12,12 @@ unsigned int totalFileSize = 0;
 
 void updateSocketHandler() {
   uint8_t mode = getWifiManager()->getMode();
-//  if (getWifiManager()->isStationMode()) {
-    clientWebSocket.loop();
-//  }
-//  if (getWifiManager()->isAccessPointMode()) {
-    serverWebSocket.loop();
-//  }
+  //  if (getWifiManager()->isStationMode()) {
+  clientWebSocket.loop();
+  //  }
+  //  if (getWifiManager()->isAccessPointMode()) {
+  serverWebSocket.loop();
+  //  }
 }
 
 void setupSocketHandler() {
@@ -70,7 +70,7 @@ void serverWebSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t 
         USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
         // send message to client
-        sendText((String)"{\"key\": \""+TIME_GET+"\"}");
+        sendText((String)"{\"key\": \"" + TIME_GET + "\"}");
       }
       break;
     case WStype_TEXT:
@@ -100,9 +100,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       break;
     case WStype_CONNECTED: {
         USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-        sendText((String)"{\"key\": \""+TIME_GET+"\"}");
+        sendText((String)"{\"key\": \"" + TIME_GET + "\"}");
         // send message to server when Connected
-        sendText((String)"{\"key\": \""+SUBSCRIBE+"\", \"value\": \"" + deviceId + "\"}");
+        sendText((String)"{\"key\": \"" + SUBSCRIBE + "\", \"value\": \"" + deviceId + "\"}");
       }
       break;
     case WStype_TEXT:
@@ -130,7 +130,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 }
 void stopClientSocket() {
   Serial.println("stopClientSocket");
-  clientWebSocket.disconnect();
+  if (&clientWebSocket != NULL)
+    clientWebSocket.disconnect();
   //  delete webSocket;
 }
 
@@ -163,7 +164,7 @@ void sendSliceMessage() {
   if (totalWrittenBytes < totalFileSize) {
     int endSize = std::min(_CHUNK_SIZE, (int) totalFileSize - totalWrittenBytes) + totalWrittenBytes;
     Serial.println("***************************************#&@(*#&*(@&#(*@&(*#&( sendSliceMessage ");
-    String message = (String)"{\"key\":\""+FILE_SEND_SLICE+"\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}";
+    String message = (String)"{\"key\":\"" + FILE_SEND_SLICE + "\",\"start\":" + String(totalWrittenBytes) + ",\"end\":" + String(endSize) + "}";
     sendText(message);
   }
   else {
@@ -171,7 +172,7 @@ void sendSliceMessage() {
   }
 }
 void sendFailedSaveMessage() {
-  String message = (String)"{\"key\":\""+FILE_SEND_ERROR+"\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}";
+  String message = (String)"{\"key\":\"" + FILE_SEND_ERROR + "\",\"name\":\"" + String(saveFileName) + "\",\"size\":" + String(totalWrittenBytes) + "}";
   sendText(message);
   SPIFFS.remove(saveFileName);
 }
@@ -199,10 +200,10 @@ void onRequestFileDetail(String filename) {
 
   if (!file) {
     Serial.println("Can't open SPIFFS file !\r\n");
-    sendText((String)"{\"key\":\""+FILE_REQUEST_ERROR+"\",\"code\":401}");
+    sendText((String)"{\"key\":\"" + FILE_REQUEST_ERROR + "\",\"code\":401}");
   }
   else {
-    sendText((String)"{\"key\":\""+FILE_DETAIL_CALLBACK+"\",\"buffer\":" + String(_SEND_CHUNK_SIZE) + ",\"size\":" + String(file.size()) + "}");
+    sendText((String)"{\"key\":\"" + FILE_DETAIL_CALLBACK + "\",\"buffer\":" + String(_SEND_CHUNK_SIZE) + ",\"size\":" + String(file.size()) + "}");
   }
   file.close();
 
@@ -245,17 +246,17 @@ void onFinishSaveFile() {
   String fullPath = saveFileName;
   pathTo.replace("/upload", "");
   USE_SERIAL.println((String)"[WSc] onFinishSaveFile :" + fullPath + " fullName:" + pathTo );
-  sendText((String)"{\"key\":\""+FILE_SEND_FINISHED+"\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}");
+  sendText((String)"{\"key\":\"" + FILE_SEND_FINISHED + "\",\"name\":\"" + pathTo + "\",\"size\":" + String(fileSize) + "}");
   SPIFFS.remove(pathTo);
   SPIFFS.rename(fullPath, pathTo);
 }
 void onGetTime() {
   String deviceTime = getDeviceTime();
-  sendText((String)"{\"key\":\""+TIME_IS+"\",\"value\":" + deviceTime + "}");
+  sendText((String)"{\"key\":\"" + TIME_IS + "\",\"value\":" + deviceTime + "}");
 }
 void sendWifiList() {
   String json = getWifiList();
-  sendText((String)"{\"key\":\""+WIFI_LIST_IS+"\",\"value\":" + json + "}");
+  sendText((String)"{\"key\":\"" + WIFI_LIST_IS + "\",\"value\":" + json + "}");
   json = String();
 }
 void handleServerText(StaticJsonDocument<256> &doc) {
@@ -323,10 +324,10 @@ void handleServerText(StaticJsonDocument<256> &doc) {
   }
   doc.clear();
 }
-void onSubscribeEvent(){
-    sendText((String)"{\"key\": \""+SUBSCRIBE_DONE+"\"}");
+void onSubscribeEvent() {
+  sendText((String)"{\"key\": \"" + SUBSCRIBE_DONE + "\"}");
 }
-void onSubscribed(){
+void onSubscribed() {
   USE_SERIAL.println("onSubscribed");
 
 }
@@ -348,7 +349,7 @@ void sendText(char * payload) {
 }
 
 void sendPairedSignal() {
-  sendText((String)"{\"key\": \""+PAIR_DONE+"\"}");
+  sendText((String)"{\"key\": \"" + PAIR_DONE + "\"}");
 }
 
 void onPairedSignal() {
@@ -356,16 +357,16 @@ void onPairedSignal() {
 }
 
 void onUpdateFileNotFound() {
-  sendText((String)(String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":404}");
+  sendText((String)(String)"{\"key\":\"" + UPDATE_ERROR + "\",\"code\":404}");
 }
 void onUpdateError() {
-  sendText((String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":500}");
+  sendText((String)"{\"key\":\"" + UPDATE_ERROR + "\",\"code\":500}");
 }
 void onUpdateFinished() {
-  sendText((String)"{\"key\":\""+UPDATE_FINISHED+"\"}");
+  sendText((String)"{\"key\":\"" + UPDATE_FINISHED + "\"}");
 }
 void onUpdateStarted() {
-  sendText((String)(String)"{\"key\":\""+UPDATE_STARTED+"\"}");
+  sendText((String)(String)"{\"key\":\"" + UPDATE_STARTED + "\"}");
 }
 void onUnpairedSignal() {
   USE_SERIAL.println("onUnpairedSignal");
