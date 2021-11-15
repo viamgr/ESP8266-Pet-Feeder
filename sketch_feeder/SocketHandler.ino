@@ -293,7 +293,7 @@ void handleServerText(StaticJsonDocument<256> &doc) {
   } else if (stringMessageKey == LAMP_FINISH) {
     turnOffLed();
   } else if (stringMessageKey == AUDIO_START) {
-    const char* filename = doc["name"];
+    const char* filename = doc["value"];
     playAudio(filename, NULL);
   }  else if (stringMessageKey == AUDIO_FINISH) {
     stopAudio();

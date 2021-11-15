@@ -8,7 +8,7 @@ void callDnsManagerAboutWifiConfigChanged() {
 
   uint8_t mode = getWifiManager()->getMode();
 
-  if (mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP) {
+  if ((mode == WIFI_MODE_AP_STA || mode == WIFI_MODE_AP) && getWifiManager()->getStatus() != WIFI_STA_STATE_ESTABLISHED) {
     startDns();
   }
   else {
