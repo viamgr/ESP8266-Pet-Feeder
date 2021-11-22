@@ -362,7 +362,7 @@ void onPairedSignal() {
 }
 
 void onUpdateFileNotFound() {
-  sendText((String)(String)"{\"key\":\"" + UPDATE_ERROR + "\",\"code\":404}");
+  sendText((String)"{\"key\":\"" + UPDATE_ERROR + "\",\"code\":404}");
 }
 void onUpdateError() {
   sendText((String)"{\"key\":\"" + UPDATE_ERROR + "\",\"code\":500}");
@@ -371,7 +371,7 @@ void onUpdateFinished() {
   sendText((String)"{\"key\":\"" + UPDATE_FINISHED + "\"}");
 }
 void onUpdateStarted() {
-  sendText((String)(String)"{\"key\":\"" + UPDATE_STARTED + "\"}");
+  sendText((String)"{\"key\":\""+UPDATE_STARTED+"\"}");
 }
 void onUnpairedSignal() {
   USE_SERIAL.println("onUnpairedSignal");

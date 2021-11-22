@@ -2,7 +2,6 @@
 #define SERVER_CONTROL_H
 #include <Arduino.h>
 #include <FS.h>   // Include the SPIFFS library
-#include <ArduinoJson.h>
 #include <TimeLib.h>
 #include <ESP8266WebServer.h>
 

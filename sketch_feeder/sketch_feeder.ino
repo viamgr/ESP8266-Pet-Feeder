@@ -27,7 +27,12 @@ Scheduler taskManager;
 Scheduler* getScheduler() {
   return &taskManager;
 }
+
 Preferences preferences;
+
+Preferences* getPreferences() {
+  return &preferences;
+}
 
 #define USE_SERIAL Serial
 
