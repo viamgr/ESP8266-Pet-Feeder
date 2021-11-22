@@ -37,9 +37,9 @@ void initWifiManager() {
     //      getNtpManager()->disable();
     //    }
   });
+  callSocketAboutWifiConfigChanged();
 
-//  callDnsManagerAboutWifiConfigChanged();
-//  callSocketAboutWifiConfigChanged();
+  callDnsManagerAboutWifiConfigChanged();
 
 }
 void restartWifi() {

@@ -25,6 +25,8 @@ class ServerControl {
     GetStatusFunction onGetStatusListener = NULL;
     UploadListener uploadListener = NULL;
     StopTasksListener stopTasksListener = NULL;
+    String baseUrl;
+
     ESP8266WebServer *server;
     File uploadFile;
 
@@ -45,10 +47,10 @@ class ServerControl {
       setupStaticPage();
       server->begin();
       server->onNotFound([this]() {
-        //server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
+        server->sendHeader("Location", "http://" + this->baseUrl + "/", true); //Redirect to our html web page
         server->send(302, "text/plane", "");
-      }); 
-  
+      });
+
     }
 
     void setupStaticPage() {
@@ -178,9 +180,10 @@ class ServerControl {
 
   public:
 
-    ServerControl() {
+    ServerControl(String baseUrl) {
       Serial.begin(115200);
       this->server = new ESP8266WebServer(80);
+      this->baseUrl = baseUrl;
       setup();
     }
 
@@ -201,6 +204,9 @@ class ServerControl {
       this->stopTasksListener = listener;
     }
 
+    void setBaseUrl(String baseUrl) {
+      this->baseUrl = baseUrl;
+    }
     void loop() {
 
       server->handleClient();

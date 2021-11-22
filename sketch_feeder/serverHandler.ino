@@ -1,7 +1,9 @@
 #include "ServerControl.h"
 
-ServerControl serverControl;
-
+ServerControl serverControl(preferences.getStaticIp());
+void configServerControl() {
+  serverControl.setBaseUrl(preferences.getStaticIp());
+}
 void initServer() {
 
   serverControl.setEventListener(eventCallback);
