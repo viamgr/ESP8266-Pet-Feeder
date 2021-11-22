@@ -70,7 +70,7 @@ class LedControl : public Task {
     }
 
     void toggle() {
-      Serial.println((String)"Toggle Led Currend State Is:" + state);
+      //Serial.println((String)"Toggle Led Currend State Is:" + state);
       if (state) off(); else on();
     }
 };

@@ -27,7 +27,7 @@ void initWifiManager() {
     Serial.print("wifiState:");
     Serial.println(wifiState);
 
-    callDnsManagerAboutWifiConfigChanged();
+//    callDnsManagerAboutWifiConfigChanged();
     callSocketAboutWifiConfigChanged();
 
     //    if (wifiState == WIFI_STA_STATE_ESTABLISHED) {
@@ -39,7 +39,7 @@ void initWifiManager() {
   });
   callSocketAboutWifiConfigChanged();
 
-  callDnsManagerAboutWifiConfigChanged();
+//  callDnsManagerAboutWifiConfigChanged();
 
 }
 void restartWifi() {

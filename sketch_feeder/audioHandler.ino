@@ -9,7 +9,7 @@ void stopAudio(){
   audioControl.stop();
 }
 void playAudio(const char *filename,void (*listener)()){
-  Serial.println((String) "playAudio");
+  //Serial.println((String) "playAudio");
 
   stopAllTasks();
   audioControl.play(filename,listener);

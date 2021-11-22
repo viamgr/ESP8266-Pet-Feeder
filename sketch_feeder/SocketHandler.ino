@@ -1,7 +1,7 @@
 #include <WebSocketsClient.h>
 #include <WebSocketsServer.h>
 
-#define _CHUNK_SIZE 15360 //15*1024
+#define _CHUNK_SIZE 12288 //12*1024
 #define _SEND_CHUNK_SIZE 512
 #define SOCKET_BASE_URL "193.108.115.160"
 WebSocketsClient clientWebSocket;
@@ -282,6 +282,9 @@ void handleServerText(StaticJsonDocument<256> &doc) {
     // TODO
   } else if (stringMessageKey == CONFIG_RESET) {
     onSetupConfig();
+  }else if (stringMessageKey == CONFIG_FACTORY) {
+    resetFactoryConfig();
+    onSetupConfig();
   } else if (stringMessageKey == COMPOSITE_START) {
     onCompositeFeeding();
   } else if (stringMessageKey == MOTOR_START) {
@@ -290,6 +293,8 @@ void handleServerText(StaticJsonDocument<256> &doc) {
     stopFeeding();
   } else if (stringMessageKey == LAMP_START) {
     turnOnLed();
+  } else if (stringMessageKey == LAMP_TOGGLE) {
+    toggleLamp();
   } else if (stringMessageKey == LAMP_FINISH) {
     turnOffLed();
   } else if (stringMessageKey == AUDIO_START) {
