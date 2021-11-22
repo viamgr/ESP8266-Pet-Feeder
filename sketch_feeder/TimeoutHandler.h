@@ -1,6 +1,5 @@
 #ifndef TIMEOUT_HANDLER_H
 #define TIMEOUT_HANDLER_H
-#include <TaskManager.h>
 #include <TaskScheduler.h>
 
 typedef std::function<void()> TimeoutHandlerListener;

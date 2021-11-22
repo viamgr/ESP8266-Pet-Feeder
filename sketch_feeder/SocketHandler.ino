@@ -334,7 +334,7 @@ void sendText(const char* payload) {
   clientWebSocket.sendTXT(payload);
   serverWebSocket.broadcastTXT(payload);
 }
-void sendText(String & payload) {
+void sendText(String payload) {
   clientWebSocket.sendTXT(payload);
   serverWebSocket.broadcastTXT(payload);
 }
@@ -365,7 +365,7 @@ void onUpdateFinished() {
   sendText((String)"{\"key\":\""+UPDATE_FINISHED+"\"}");
 }
 void onUpdateStarted() {
-  sendText((String)(String)"{\"key\":\""+UPDATE_STARTED+"\"}");
+  sendText((String)"{\"key\":\""+UPDATE_STARTED+"\"}");
 }
 void onUnpairedSignal() {
   USE_SERIAL.println("onUnpairedSignal");

@@ -2,7 +2,7 @@
 #ifndef ARDUINO_PREFERENCES_H // change depending on your class
 #define ARDUINO_PREFERENCES_H // change depending on your class
 #include <FS.h>   // Include the SPIFFS library
-#include <ArduinoJson.h>
+#include <ArduinoJson.h>   // Include the SPIFFS library
 #define defaultFeedingDuration 5000
 #define defaultSoundVolume 3.99
 #define ledStateAlwaysOff 0

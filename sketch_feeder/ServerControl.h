@@ -2,7 +2,6 @@
 #define SERVER_CONTROL_H
 #include <Arduino.h>
 #include <FS.h>   // Include the SPIFFS library
-#include <ArduinoJson.h>
 #include <TimeLib.h>
 #include <ESP8266WebServer.h>
 
@@ -46,7 +45,7 @@ class ServerControl {
       setupStaticPage();
       server->begin();
       server->onNotFound([this]() {
-        server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
+        //server->sendHeader("Location", "http://192.168.4.1/", true); //Redirect to our html web page
         server->send(302, "text/plane", "");
       }); 
   
