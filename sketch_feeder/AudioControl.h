@@ -37,12 +37,11 @@ class AudioControl: public Task {
     }
 
     void play(const char *filename, OnStopListener listener) {
-      Serial.println((String)"play "+filename);
 
-      audioLogger = &Serial;
-      file = new AudioFileSourceSPIFFS("/feeding.mp3");
+      //audioLogger = &Serial;
+      file = new AudioFileSourceSPIFFS(filename);
       id3 = new AudioFileSourceID3(file);
-      id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
+      //id3->RegisterMetadataCB(MDCallback, (void*)"ID3TAG");
       out = new AudioOutputI2SNoDAC();
       out->SetGain(soundVolume);
       this->listener = listener;
@@ -93,42 +92,33 @@ class AudioControl: public Task {
       Serial.print(millis()); Serial.print(":\t");
       Serial.print("AudioControl: TaskID=");
       Serial.println(i);
-      
+      stop();
+    }
 
-Serial.println("1");
+
+    void stop() {
+      disable();
       if (NULL != file) {
         delete file;
         file = NULL;
       }
-      Serial.println("2");
+
       if (NULL != id3) {
         delete id3;
         id3 = NULL;
       }
-      Serial.println("3");
 
       if (NULL != out) {
         delete out;
         out = NULL;
       }
 
-      Serial.println("4");
-
       if (NULL != mp3) {
-//        delete mp3;
-//        mp3 = NULL;
+        delete mp3;
+        mp3 = NULL;
       }
 
-      Serial.println("5");
-
       listener = NULL;
-
-    }
-
-
-    void stop() {
-      disable();
-      
     }
 };
 #endif

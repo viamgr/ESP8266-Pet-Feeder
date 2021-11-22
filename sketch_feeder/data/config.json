@@ -9,7 +9,7 @@
     "0 30 08 * * *",
     "0 30 10 * * *"
   ],
-  "accessPointName": "Feeder-Access-Point",
+  "accessPointName": "Hotspot",
   "staticIp": "192.168.8.150",
   "gateway": "192.168.8.1",
   "subnet": "255.255.255.0",
