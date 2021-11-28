@@ -2,16 +2,16 @@
   "feedingDuration": 2000,
   "ledTurnOffDelay": 300000,
   "soundVolume": 3.99,
-  "wifiSsid": "BMV2",
-  "wifiPassword": "6037991302",
+  "wifiSsid": "",
+  "wifiPassword": "",
   "alarms": [
     "0 30 08 * * *",
     "0 30 10 * * *"
   ],
-  "accessPointName": "Hotspot",
-  "staticIp": "192.168.8.150",
-  "gateway": "192.168.8.1",
-  "subnet": "255.255.255.0",
+  "accessPointName": "Feeder-Access-Point",
+  "staticIp": "",
+  "gateway": "",
+  "subnet": "",
   "useDhcp": 0,
   "wifiMode": 1
 }

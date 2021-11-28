@@ -12,8 +12,8 @@ void setupLed(){
   led.setup(preferences.getLedTurnOffDelay());	
 }
 
-void onLedTimerEvent() {
-  Serial.println((String)"onLedTimerEvent");
+void toggleLamp() {
+  Serial.println((String)"toggleLamp");
   led.toggle();
 }
 void turnOnLed(){

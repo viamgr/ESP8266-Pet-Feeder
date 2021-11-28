@@ -64,8 +64,8 @@ class WifiManager {
       }
       setStatus(WIFI_STA_STATE_ESTABLISHED);
 
-      Serial.print("Station connected, IP: ");
-      Serial.println(WiFi.localIP());
+//      //Serial.print("Station connected, IP: ");
+//      //Serial.println(WiFi.localIP());
     }
 
     void turnOff() {

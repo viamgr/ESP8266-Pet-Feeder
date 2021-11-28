@@ -5,12 +5,8 @@
 #include <ArduinoJson.h>   // Include the SPIFFS library
 #define defaultFeedingDuration 5000
 #define defaultSoundVolume 3.99
-#define ledStateAlwaysOff 0
-#define ledStateAlwaysOn 1
-#define ledStateFeedingOn 2
 #define DEFAULT_USE_DHCP 1
 #define defaultLedTurnOffDelay 5000
-#define defaultLedState ledStateFeedingOn
 #define DEFAULT_WIFI_MODE WIFI_MODE_AP
 #define MAX_ALARM_SIZE 10
 #define CONFIG_FILE_PATH "/config.json"
@@ -67,9 +63,6 @@ class Preferences
     int getSoundVolume() {
       return doc["soundVolume"] | defaultSoundVolume;
     }
-    int getLedState() {
-      return doc["ledState"] | defaultLedState;
-    }
 
     char* getAccessPointName() {
       const char* ssid = doc["accessPointName"] | "Feeder-Access-Point";
@@ -97,9 +90,6 @@ class Preferences
     }
     void setSoundVolume(int value) {
       doc["soundVolume"] = value;
-    }
-    void setLedState(int value) {
-      doc["ledState"] = value;
     }
 
     void setAlarms(JsonArray data) {

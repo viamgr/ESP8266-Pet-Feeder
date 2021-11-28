@@ -41,11 +41,11 @@ String getStatusCallback(String key) {
 
 void eventCallback(String name) {
   stopAllTasks();
-  Serial.println((String)"name " + name);
+  //Serial.println((String)"name " + name);
   if (name == "EVENT_FEEDING")
     onFeedingEvent();
   else if (name == "EVENT_LED_TIMER")
-    onLedTimerEvent();
+    toggleLamp();
   else if (name == "EVENT_PLAY_FEEDING_AUDIO")
     onPlayFeedingAudioEvent();
   else if (name == "EVENT_WIFI_CONNECT")
