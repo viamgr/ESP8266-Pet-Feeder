@@ -28,6 +28,7 @@ class WifiManager {
     String ssid;
     String password;
     uint8_t status;
+    uint8_t currentMode = -1;
     uint8_t mode = true;
     bool useDhcp = true;
     bool autoApSwitch = false;
@@ -191,8 +192,12 @@ class WifiManager {
       WiFi.softAPdisconnect(true);
     }
     void setMode(uint8_t mode) {
+    if(currentMode == mode){
+       Serial.println((String) " No need to restart currentMode:" + currentMode +" mode:"+mode);
+       return;
+    }
       this->mode = mode;
-
+      this->currentMode = mode;
       Serial.println((String) "this->mode:" + this->mode );
 
       if (mode == WIFI_MODE_AP_STA) {
