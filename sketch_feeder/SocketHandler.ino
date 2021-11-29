@@ -1,7 +1,7 @@
 #include <WebSocketsClient.h>
 #include <WebSocketsServer.h>
 
-#define _CHUNK_SIZE 12288 //12*1024
+#define _CHUNK_SIZE 5288 //12*1024
 #define _SEND_CHUNK_SIZE 512
 #define SOCKET_BASE_URL "193.108.115.160"
 WebSocketsClient clientWebSocket;
@@ -336,10 +336,16 @@ void onSubscribed(){
 
 }
 void sendText(const char* payload) {
+  USE_SERIAL.print("sendText :");
+    USE_SERIAL.println(payload);
+
   clientWebSocket.sendTXT(payload);
   serverWebSocket.broadcastTXT(payload);
 }
 void sendText(String payload) {
+  USE_SERIAL.print("sendText :");
+  USE_SERIAL.println(payload);
+
   clientWebSocket.sendTXT(payload);
   serverWebSocket.broadcastTXT(payload);
 }

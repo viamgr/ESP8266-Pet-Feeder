@@ -1,3 +1,4 @@
+
 #define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between tasks if no callback methods were invoked during the pass 
 #define _TASK_STATUS_REQUEST    // Compile with support for StatusRequest functionality - triggering tasks on status change events in addition to time only
 #define _TASK_WDT_IDS           // Compile with support for wdt control points and task ids
@@ -11,12 +12,6 @@
 #include "NtpManager.h"
 #include "WifiManager.h"
 #include "Preferences.h"
-
-#include "AudioFileSourceSPIFFS.h"
-#include "AudioFileSourceID3.h"
-#include "AudioGeneratorMP3.h"
-#include "AudioOutputI2SNoDAC.h"
-
 
 String deviceId = "Feeder1";
 
@@ -55,36 +50,6 @@ void onSetupConfig() {
 void reloadPreferences() {
   preferences.reload();
 }
-
-
-AudioGeneratorMP3 *mp3;
-AudioFileSourceSPIFFS *file;
-AudioOutputI2SNoDAC *out;
-AudioFileSourceID3 *id3;
-
-
-// Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
-void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
-{
-  (void)cbData;
-  //Serial.printf("ID3 callback for: %s = '", type);
-
-  if (isUnicode) {
-    string += 2;
-  }
-
-  while (*string) {
-    char a = *(string++);
-    if (isUnicode) {
-      string++;
-    }
-    //Serial.printf("%c", a);
-  }
-  //Serial.printf("'\n");
-  Serial.flush();
-}
-
-
 void setup()
 {
   Serial.begin(115200);
@@ -102,7 +67,7 @@ void setup()
 }
 
 void initialSetup() {
-//    initNtp();
+  //  initNtp();
   initWifiManager();
   initServer();
   initClickButton();
@@ -119,5 +84,4 @@ void loop()
   updateSocketHandler();
   updateDnsManager();
   taskManager.execute();
-
 }
