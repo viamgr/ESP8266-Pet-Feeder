@@ -77,10 +77,11 @@ class WifiManager {
       //wifi_fpm_do_sleep(0xFFFFFFF);
     }
 
+
     void beginStation() {
       Serial.println("beginStation, IP: " + ssid);
 
-      if (ssid != NULL && ssid != '\0' && ssid != "") {
+      if (ssid != NULL && ssid != "") {
         if (!useDhcp) {
           WiFi.config(*staticIp, *gateway, *subnet);
         }
@@ -90,6 +91,7 @@ class WifiManager {
       Serial.println((String)"beginStation finished useDhcp:" + (useDhcp == true));
 
     }
+
 
 
   public:
