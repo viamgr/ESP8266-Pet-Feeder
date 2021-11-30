@@ -3,7 +3,7 @@
 
 #include "AudioControl.h"
 
-AudioControl audioControl(&taskManager);
+AudioControl audioControl;
 
 void stopAudio(){	
   audioControl.stop();
@@ -17,4 +17,8 @@ void playAudio(const char *filename,void (*listener)()){
 }
 void setupAudioConfig(){
   audioControl.setSoundVolume(preferences.getSoundVolume());
+}
+
+void updateAudioPlayer(){
+    audioControl.update();
 }
