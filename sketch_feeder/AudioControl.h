@@ -19,9 +19,10 @@
 
 typedef std::function<void(void)> OnStopListener;
 
-class AudioControl: public Task {
+class AudioControl{
 
   private:
+    bool playing = false;
     OnStopListener listener = NULL;
     AudioGeneratorMP3 *mp3 = NULL;
     AudioFileSourceSPIFFS *file = NULL;
@@ -29,7 +30,8 @@ class AudioControl: public Task {
     AudioOutputI2SNoDAC *out = NULL;
     float soundVolume = 3.99;
   public:
-    AudioControl(Scheduler* scheduler) : Task(TASK_IMMEDIATE , TASK_FOREVER, scheduler) {
+    AudioControl(){
+
     }
 
     void setSoundVolume(float soundVolume) {
@@ -38,6 +40,7 @@ class AudioControl: public Task {
 
     void play(const char *filename, OnStopListener listener) {
       Serial.println((String)"play "+filename);
+      stop();
 
       audioLogger = &Serial;
       file = new AudioFileSourceSPIFFS(filename);
@@ -52,25 +55,26 @@ class AudioControl: public Task {
       //Serial.println("play2");
 
       mp3->begin(id3, out);
-      restart();
+      playing = true;
     }
 
     void update() {
-      if (mp3!=NULL && mp3->isRunning()) {
-//            Serial.println("play3");
-        if (!mp3->loop()) mp3->stop();
-      } else {
-        Serial.print("MP3 done\n");
-        if ( (listener != NULL))  {
-          listener();
-        }
-        stop();
+      if(playing==true){
+         if (mp3!=NULL && mp3->isRunning()) {
+              Serial.println("play3");
+              if (!mp3->loop()) {
+                mp3->stop();
+                Serial.println("stop");
+              }
+            } else {
+              Serial.print("MP3 done\n");
+              if ((listener != NULL))  {
+                listener();
+              }
+              stop();
+            }
       }
-    }
 
-    bool Callback() {
-      update();
-      return true;
     }
 
     // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
@@ -93,12 +97,8 @@ class AudioControl: public Task {
       Serial.printf("'\n");
       Serial.flush();
     }
-    void OnDisable() {
-      int i = getId();
-      Serial.print(millis()); Serial.print(":\t");
-      Serial.print("AudioControl: TaskID=");
-      Serial.println(i);
 
+    void stop() {
 
       if (NULL != file) {
         delete file;
@@ -118,21 +118,16 @@ class AudioControl: public Task {
 
       //Serial.println("4");
 
-      if (NULL != mp3) {
+      if (NULL != mp3 && playing ==true) {
+//        if (mp3->isRunning() && !mp3->loop()) mp3->stop();
         delete mp3;
         mp3 = NULL;
       }
 
       //Serial.println("5");
 
+      playing = false;
       listener = NULL;
-
-    }
-
-
-    void stop() {
-      disable();
-      
     }
 };
 #endif

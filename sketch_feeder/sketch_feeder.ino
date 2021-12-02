@@ -46,6 +46,8 @@ void onSetupConfig() {
   setupAudioConfig();
   configDnsManager();
   configServerControl();
+
+  playAudio("/feeding.mp3",NULL);
 }
 void reloadPreferences() {
   preferences.reload();
@@ -71,7 +73,7 @@ void initialSetup() {
   initWifiManager();
   initServer();
   initClickButton();
-  setupDnsManager();
+//  setupDnsManager();
   setupSocketHandler();
   Serial.println("initialSetup");
 }
@@ -82,6 +84,7 @@ void loop()
   updateFeedingLoop();
   updateServerControl();
   updateSocketHandler();
-  updateDnsManager();
+//  updateDnsManager();
+  updateAudioPlayer();
   taskManager.execute();
 }
