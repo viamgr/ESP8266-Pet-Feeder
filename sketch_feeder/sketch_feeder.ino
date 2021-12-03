@@ -47,7 +47,7 @@ void onSetupConfig() {
   configDnsManager();
   configServerControl();
 
-  playAudio("/feeding.mp3",NULL);
+  //playAudio("/feeding.mp3",NULL);
 }
 void reloadPreferences() {
   preferences.reload();

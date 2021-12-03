@@ -1,7 +1,7 @@
 #include <WebSocketsClient.h>
 #include <WebSocketsServer.h>
 
-#define _CHUNK_SIZE 5288 //12*1024
+#define _CHUNK_SIZE 1024 //12*1024
 #define _SEND_CHUNK_SIZE 512
 #define SOCKET_BASE_URL "193.108.115.160"
 WebSocketsClient clientWebSocket;

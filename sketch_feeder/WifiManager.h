@@ -51,8 +51,9 @@ class WifiManager {
 
     }
     void reconnect() {
-      if (autoRetry)
-        WiFi.reconnect();
+      if (autoRetry){
+        beginStation();
+      }
     }
 
     void setAutoRetry(bool autoRetry) {
@@ -62,6 +63,7 @@ class WifiManager {
     void onConnect() {
       if (this->mode == WIFI_MODE_AP_STA && autoApSwitch) {
         setMode(WIFI_MODE_STA);
+        autoApSwitch = false;
       }
       setStatus(WIFI_STA_STATE_ESTABLISHED);
 
@@ -194,7 +196,7 @@ class WifiManager {
       WiFi.softAPdisconnect(true);
     }
     void setMode(uint8_t mode) {
-    if(currentMode == mode){
+    if(currentMode == mode || (autoApSwitch==true && mode!=WIFI_MODE_AP_STA)){
        Serial.println((String) " No need to restart currentMode:" + currentMode +" mode:"+mode);
        return;
     }

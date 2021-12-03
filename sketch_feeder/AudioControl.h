@@ -52,7 +52,7 @@ class AudioControl{
       out->SetGain(soundVolume);
       this->listener = listener;
       mp3 = new AudioGeneratorMP3();
-      //Serial.println("play2");
+      Serial.println("play2");
 
       mp3->begin(id3, out);
       playing = true;
@@ -124,7 +124,7 @@ class AudioControl{
         mp3 = NULL;
       }
 
-      //Serial.println("5");
+      Serial.println("stop");
 
       playing = false;
       listener = NULL;
