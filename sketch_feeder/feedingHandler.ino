@@ -29,9 +29,12 @@ void stopFeedingAlarm() {
 
 void onFeedingAlarm() {
   JsonArray data = preferences.getAlarms();
+  Serial.println((String) "onFeedingAlarm:"+ data.size());
+
   for (int x = 0; x < data.size(); x++)  {
     const char *time = data[x];
     Serial.println((String)"time:" + time);
+    Serial.println("time set");
     alarms[x] = Cron.create((char*)time, onCompositeFeeding, false);
   }
 }

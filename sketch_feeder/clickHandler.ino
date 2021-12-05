@@ -56,6 +56,7 @@ void onLongClickListener(int duration) {
 void initClickButton(){
 	 
   awesomeClickButton.setOnClickListener([]() {
+    Serial.println("setOnClickListener " );
     stopAllTasks();
     onCompositeFeeding();
   });

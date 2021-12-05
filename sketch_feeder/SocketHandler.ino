@@ -359,7 +359,7 @@ void sendText(char * payload) {
 }
 
 void sendPairedSignal() {
-  sendText((String)"{\"key\": \""+PAIR_DONE+"\"}");
+  sendText((String)"{\"key\": \""+PAIR_DONE+"\",\"value\":\""+deviceId+"\"}");
 }
 
 void onPairedSignal() {

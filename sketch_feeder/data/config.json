@@ -5,7 +5,8 @@
   "wifiSsid": "BMV2",
   "wifiPassword": "6037991302",
   "alarms": [
-    "0 30 08 * * *",
+    "0 01 00 * * *",
+    "0 02 00 * * *",
     "0 30 10 * * *"
   ],
   "accessPointName": "Hotspot",

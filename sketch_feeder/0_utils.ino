@@ -1,3 +1,8 @@
+#include <FS.h>
+#define DEVICE_FILE_NAME "/device.txt"
+
+
+String deviceId = "Feeder1";
 
 unsigned long string_to_long (String number)
 {
@@ -74,4 +79,33 @@ void showDeviceInfo() {
 
   Serial.printf("CPU frequency: %u MHz\n\n", ESP.getCpuFreqMHz());
   Serial.print("#####################");
+}
+
+void configDeviceInfo(){
+
+  bool success = SPIFFS.begin();
+
+  if (success) {
+    Serial.println("File system mounted with success");
+  } else {
+    Serial.println("Error mounting the file system");
+    return;
+  }
+
+    if(SPIFFS.exists(DEVICE_FILE_NAME)==true){
+         File file = SPIFFS.open(DEVICE_FILE_NAME, "r");
+        if (!file) {
+            Serial.println("Error opening file for writing");
+            return;
+          }
+
+          while (file.available()) {
+               deviceId=file.readStringUntil('\n');
+               break;
+         }
+    }
+
+
+    Serial.println((String)"DeviceId is:"+deviceId);
+
 }

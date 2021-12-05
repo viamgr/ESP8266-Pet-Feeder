@@ -13,9 +13,6 @@
 #include "WifiManager.h"
 #include "Preferences.h"
 
-String deviceId = "Feeder1";
-
-
 NtpManager* getNtpManager();
 Scheduler taskManager;
 
@@ -56,6 +53,9 @@ void setup()
 {
   Serial.begin(115200);
   setenv("TZ", "UTC-03:30", 0);
+  setDeviceTime(1638467000);
+  configDeviceInfo();
+
   showDeviceInfo();
   onSetupConfig();
   initialSetup();
@@ -65,7 +65,6 @@ void setup()
     Serial.println((String)"remove:" + dir.fileName());
     SPIFFS.remove( dir.fileName());
   }
-
 }
 
 void initialSetup() {

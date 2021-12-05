@@ -150,6 +150,7 @@ class Preferences
 
       // Deserialize the JSON document
       DeserializationError error = deserializeJson(doc, file);
+      Serial.println((String) "onFeedingAlarm:"+  (doc["alarms"].size()));
 
       if (error)
         Serial.println(F("Failed to read file, using default configuration"));
