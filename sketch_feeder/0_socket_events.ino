@@ -7,6 +7,7 @@
 #define SUBSCRIBE "subscribe"
 #define PAIR_ERROR "pair:error"
 #define LAMP_START "lamp:start"
+#define DEBUG_SERVER "debug:server"
 #define LAMP_TOGGLE "lamp:toggle"
 #define LAMP_FINISH "lamp:finish"
 #define AUDIO_START "audio:start"

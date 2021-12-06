@@ -3,7 +3,7 @@
 
 #define _CHUNK_SIZE 1024 //12*1024
 #define _SEND_CHUNK_SIZE 512
-#define SOCKET_BASE_URL "193.108.115.160"
+#define SOCKET_BASE_URL "2.56.153.79"
 WebSocketsClient clientWebSocket;
 WebSocketsServer serverWebSocket = WebSocketsServer(4200);
 
@@ -318,6 +318,8 @@ void handleServerText(StaticJsonDocument<256> &doc) {
     onSubscribeEvent();
   }  else if (stringMessageKey == SUBSCRIBE_DONE ) {
     onSubscribed();
+  } else if (stringMessageKey == DEBUG_SERVER ) {
+    sendText(SOCKET_BASE_URL);
   } else if (stringMessageKey == PAIR_DONE) {
     onPairedSignal();
   } else if (stringMessageKey == UNPAIR) {
