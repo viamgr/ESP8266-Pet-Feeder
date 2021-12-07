@@ -324,11 +324,23 @@ void handleServerText(StaticJsonDocument<256> &doc) {
     onPairedSignal();
   } else if (stringMessageKey == UNPAIR) {
     onUnpairedSignal();
-  } else if (stringMessageKey == TIME_SET) {
+  } else if (stringMessageKey == FILE_DELETE) {
+       const char* filename = doc["value"];
+       deleteFile(filename);
+  }
+   else if (stringMessageKey == TIME_SET) {
     unsigned long timestamp = doc["value"];
     setDeviceTime(timestamp);
   }
   doc.clear();
+}
+void deleteFile(const char *filename){
+    Serial.println((String)" DELETE FILE : "+filename);
+  if(!SPIFFS.remove(filename)){
+      sendText((String)"{\"key\": \""+FILE_DELETE_ERROR+"\",\"value\":\""+filename+"\"}");
+  }else{
+     sendText((String)"{\"key\": \""+FILE_DELETE_DONE+"\",\"value\":\""+filename+"\"}");
+  }
 }
 void onSubscribeEvent(){
     sendText((String)"{\"key\": \""+SUBSCRIBE_DONE+"\"}");
@@ -369,7 +381,7 @@ void onPairedSignal() {
 }
 
 void onUpdateFileNotFound() {
-  sendText((String)(String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":404}");
+  sendText((String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":404}");
 }
 void onUpdateError() {
   sendText((String)"{\"key\":\""+UPDATE_ERROR+"\",\"code\":500}");

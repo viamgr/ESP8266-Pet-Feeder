@@ -68,13 +68,14 @@ void setup()
 }
 
 void initialSetup() {
-  //  initNtp();
+  initNtp();
   initWifiManager();
   initServer();
   initClickButton();
 //  setupDnsManager();
   setupSocketHandler();
   Serial.println("initialSetup");
+
 }
 void loop()
 {

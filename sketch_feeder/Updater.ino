@@ -2,7 +2,7 @@
 void updateSketchFromFile() {
 
   pinMode(BUILTIN_LED, OUTPUT);
-  digitalWrite(BUILTIN_LED, LOW);
+
   File file = SPIFFS.open("/update.bin", "r");
   if (file.available() == false) {
     Serial.println("------------------------------------- Udpater file not found");
@@ -19,8 +19,9 @@ void updateSketchFromFile() {
     Update.printError(Serial);
     onUpdateError();
     Serial.println("------------------------------------- ERROR");
-  }
 
+  }
+  digitalWrite(BUILTIN_LED, LOW);
   while (file.available()) {
     uint8_t ibuffer[128];
     file.read((uint8_t *)ibuffer, 128);
@@ -32,6 +33,7 @@ void updateSketchFromFile() {
   Serial.print(Update.end(true));
   digitalWrite(BUILTIN_LED, HIGH);
   file.close();
+  SPIFFS.remove( "/update.bin");
   onUpdateFinished();
   Serial.println("------------------------------------- Update Finished!");
 }

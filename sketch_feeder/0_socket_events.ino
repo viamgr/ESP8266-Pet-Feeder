@@ -35,3 +35,6 @@
 #define FILE_DETAIL_REQUEST "file:detail:request"
 #define FILE_DETAIL_CALLBACK "file:detail:callback"
 #define FILE_REQUEST_FINISHED "file:request:finished"
+#define FILE_DELETE "file:delete"
+#define FILE_DELETE_ERROR "file:delete:error"
+#define FILE_DELETE_DONE "file:delete:done"
