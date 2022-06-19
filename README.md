@@ -13,4 +13,4 @@ A high tech project to communicate with a device using Wifi and socket.
 
 [See Arduino ESP8266 Project](https://github.com/viamgr/ESP8266-Pet-Feeder "See Arduino ESP8266 Project")
 
-[See NodeJS Socket Bridge]([https://github.com/viamgr/ESP8266-Pet-Feeder](https://github.com/viamgr/IOT-socket-Brindge) "See NodeJS Socket Bridge")
+[See NodeJs Socket Bridge](https://github.com/viamgr/IOT-socket-Brindge "See NodeJs Socket Bridge")
